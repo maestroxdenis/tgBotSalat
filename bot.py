@@ -13,7 +13,7 @@ from aiogram.types import FSInputFile, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
-bot = Bot(token='7540561391:AAH-2_dRdlpGjI34JDC5pBb-0SOCsT5My3A')
+bot = Bot(token='хуй')
 dp = Dispatcher()
 router = Router()
 dp.include_router(router)

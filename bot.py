@@ -13,7 +13,7 @@ from aiogram.types import FSInputFile, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
-bot = Bot(token='sanya sosi')
+bot = Bot(token='7540561391:AAH-2_dRdlpGjI34JDC5pBb-0SOCsT5My3A')
 dp = Dispatcher()
 router = Router()
 dp.include_router(router)
@@ -31,7 +31,10 @@ active = False
 
 @router.message(Command('rasstrel'))
 async def mutes(message: types.Message):
-    if message.from_user.id == 7187106984:
+    user = message.from_user.id
+    user = await bot.get_chat_member(message.chat.id, message.from_user.id)
+    status = user.status
+    if message.from_user.id == 7187106984 or status == 'administrator' or status == 'owner' or status == 'creator':
         await message.answer('Вам пизда')
         file = open('users.txt', 'a+')
         file.seek(0)
@@ -47,7 +50,10 @@ async def mutes(message: types.Message):
 
 @router.message(Command('unmute'))
 async def mutes(message: types.Message):
-    if message.from_user.id == 7187106984:
+    user = message.from_user.id
+    user = await bot.get_chat_member(message.chat.id, message.from_user.id)
+    status = user.status
+    if message.from_user.id == 7187106984 or status == 'administrator' or status == 'owner' or status == 'creator':
         file = open('users.txt', 'a+')
         file.seek(0)
         users = file.readlines()

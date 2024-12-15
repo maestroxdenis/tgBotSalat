@@ -30,6 +30,157 @@ l = []
 active = False
 
 
+@router.message(Command('blackjack'))
+async def blackjack(message: types.Message):
+    deck = ['2','3','4','5','6','7','8','9','10','10','10','10','11']*4
+    c1 = random.choice(deck)
+    deck.remove(c1)
+    c2 = random.choice(deck)
+    deck.remove(c2)
+    d1 = random.choice(deck)
+    deck.remove(d1)
+    d2 = random.choice(deck)
+    deck.remove(d2)
+    sum = int(c1) + int(c2)
+    kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Еще', callback_data='add')).add(InlineKeyboardButton(text='Хватит', callback_data='enough')).as_markup()
+    m = await message.answer(f'Ваши карты: {c1} {c2} - {sum}\nКарты дилера: {d1} XX - {d1}', reply_markup=kb)
+    file = open(f'{m.message_id}.txt', 'a+')
+    file.write(' '.join(deck) + '\n')
+    file.write(f'{c1} {c2}\n{d1} {d2}' + '\n')
+    file.write(f'{str(message.from_user.id)}')
+    file.close()
+
+
+@router.callback_query(F.data == 'add')
+async def add_card(callback: types.CallbackQuery):
+    kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Еще', callback_data='add')).add(InlineKeyboardButton(text='Хватит', callback_data='enough')).as_markup()
+    file = open(f'{callback.message.message_id}.txt', 'a+')
+    file.seek(0)
+    deck = file.readline()[:-1].split(' ')
+    c = file.readline()[:-1].split(' ')
+    d = file.readline()[:-1].split(' ')
+    u = file.readline()
+    if callback.from_user.id != int(u):
+        return
+    new_c = random.choice(deck)
+    deck.remove(new_c)
+    c.append(new_c)
+    file.close()
+    open(f'{callback.message.message_id}.txt', 'w').close()
+    file = open(f'{callback.message.message_id}.txt', 'a+')
+    file.write(' '.join(deck) + '\n')
+    file.write(f'{" ".join(c)}\n{" ".join(d)}' + '\n')
+    file.write(f'{str(callback.from_user.id)}')
+    file.close()
+    sum = 0
+    sum1 = 0
+    for i in d:
+        sum1 += int(i)
+    for i in c:
+        sum += int(i)
+    if sum > 21:
+        if '11' in c:
+            ind = c.index('11')
+            c.pop(ind)
+            c.insert(ind, '1')
+            open(f'{callback.message.message_id}.txt', 'w').close()
+            file = open(f'{callback.message.message_id}.txt', 'a+')
+            file.write(' '.join(deck) + '\n')
+            file.write(f'{" ".join(c)}\n{" ".join(d)}' + '\n')
+            file.write(f'{str(callback.from_user.id)}')
+            file.close()
+            sum -= 10
+            await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum}\nКарты дилера: {d[0]} XX - {d[0]}', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+        else:
+            await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum}\nКарты дилера: {" ".join(d)} - {sum1}', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+            # sum = 0
+            # for i in d:
+            #     sum += int(i)
+            # while (sum < 17):
+            #     new_d = random.choice(deck)
+            #     deck.remove(new_d)
+            #     d.append(new_d)
+            #     await asyncio.sleep(1.5)
+            #     await bot.edit_message_text(f'Ваши карты: {" ".join(c)}\nКарты дилера: {" ".join(d)}', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+            #     sum += int(new_d)
+            # if sum > 21:
+            #     kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Новая игра', callback_data='newgame')).as_markup()
+            #     await bot.edit_message_text(f'Ваши карты: {" ".join(c)}\nКарты дилера: {" ".join(d)}\n\nПовезло тебе, лошара!', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+            # else:
+            kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Новая игра', callback_data='newgame')).as_markup()
+            await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum}\nКарты дилера: {" ".join(d)} - {sum1}\n\nЛох, перебрал!', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+    elif sum == 21:
+        kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Новая игра', callback_data='newgame')).as_markup()
+        await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum}\nКарты дилера: {" ".join(d)} - {sum1}\n\nПобеда!', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+    else:
+        await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum}\nКарты дилера: {d[0]} XX - {d[0]}', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+    await callback.answer()
+
+
+@router.callback_query(F.data == 'enough')
+async def enough_cards(callback: types.CallbackQuery):
+    kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Новая игра', callback_data='newgame')).as_markup()
+    file = open(f'{callback.message.message_id}.txt', 'a+')
+    file.seek(0)
+    deck = file.readline()[:-1].split(' ')
+    c = file.readline()[:-1].split(' ')
+    d = file.readline()[:-1].split(' ')
+    u = file.readline()
+    if callback.from_user.id != int(u):
+        return
+    sum = 0
+    sum1 = 0
+    for i in c:
+        sum1 += int(i)
+    for i in d:
+        sum += int(i)
+    await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum1}\nКарты дилера: {" ".join(d)} - {sum}', None, callback.message.chat.id, callback.message.message_id)
+    while (sum < 17):
+        new_d = random.choice(deck)
+        deck.remove(new_d)
+        d.append(new_d)
+        await asyncio.sleep(1.5)
+        await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum1}\nКарты дилера: {" ".join(d)} - {sum}', None, callback.message.chat.id, callback.message.message_id)
+        sum += int(new_d)
+    if sum > 21:
+        await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum1}\nКарты дилера: {" ".join(d)} - {sum}\n\nПовезло тебе, лошара!', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+    else:
+        if sum > sum1:
+            await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum1}\nКарты дилера: {" ".join(d)} - {sum}\n\nНедобрал, лошара!', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+        else:
+            await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum1}\nКарты дилера: {" ".join(d)} - {sum}\n\nПовезло тебе, лошара!', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+
+
+@router.callback_query(F.data == 'newgame')
+async def newgame(callback: types.CallbackQuery):
+    file = open(f'{callback.message.message_id}.txt', 'a+')
+    file.seek(0)
+    deck = file.readline()[:-1].split(' ')
+    c = file.readline()[:-1].split(' ')
+    d = file.readline()[:-1].split(' ')
+    u = file.readline()
+    if callback.from_user.id != int(u):
+        return
+    open(f'{callback.message.message_id}.txt', 'w').close()
+    deck = ['2','3','4','5','6','7','8','9','10','10','10','10','11']*4
+    c1 = random.choice(deck)
+    deck.remove(c1)
+    c2 = random.choice(deck)
+    deck.remove(c2)
+    d1 = random.choice(deck)
+    deck.remove(d1)
+    d2 = random.choice(deck)
+    deck.remove(d2)
+    sum = int(c1) + int(c2)
+    kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Еще', callback_data='add')).add(InlineKeyboardButton(text='Хватит', callback_data='enough')).as_markup()
+    await bot.edit_message_text(f'Ваши карты: {c1} {c2} - {sum}\nКарты дилера: {d1} XX - {d1}', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+    file = open(f'{callback.message.message_id}.txt', 'a+')
+    file.write(' '.join(deck) + '\n')
+    file.write(f'{c1} {c2}\n{d1} {d2}' + '\n')
+    file.write(f'{str(callback.from_user.id)}')
+    file.close()
+
+
 @router.message(Command('rasstrel'))
 async def mutes(message: types.Message):
     user = message.from_user.id
@@ -326,7 +477,7 @@ async def shoot(message: types.Message):
         unlucky_user_status = unlucky_user.status
         await message.answer(f'{m}@{unlucky_username} и подарил ему мут на {minutes} минут! @{unlucky_username}, Ваше последнее слово?')
         await asyncio.sleep(10)
-        await bot.send_video(message.chat.id, video=gif)
+        await bot.send_document(message.chat.id, gif)
         if unlucky_user_status == 'restricted':
             bantime = unlucky_user.until_date + timedelta(minutes=minutes)
             await bot.restrict_chat_member(message.chat.id, int(unlucky_user_id), permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=bantime)
@@ -345,7 +496,7 @@ async def shoot(message: types.Message):
     l.remove(user)
 
 
-@router.message(F.text.lower().startwith('кто '))
+@router.message(F.text.lower().startswith('кто '))
 async def hui(message: types.Message):
     file = open('all_users.txt', 'a+')
     file.seek(0)
@@ -355,7 +506,14 @@ async def hui(message: types.Message):
     await message.answer('@' + user + f' {message.text[4:]}')
 
 
-@router.message()
+@router.message(F.text.lower() == 'мяф')
+async def hui(message: types.Message):
+    myafs = [FSInputFile('myaf1.mp4'), FSInputFile('myaf2.mp4'), FSInputFile('myaf3.mp4'), FSInputFile('myaf4.mp4'), FSInputFile('myaf5.mp4'), FSInputFile('myaf6.mp4'), FSInputFile('myaf7.mp4'), FSInputFile('myaf8.mp4')]
+    gif = random.choice(myafs)
+    await bot.send_document(message.chat.id, gif)
+
+
+@router.message(F.text.lower().contains('хуй'))
 async def hui(message: types.Message):
 
     file = open('all_users.txt', 'a+')
@@ -366,10 +524,7 @@ async def hui(message: types.Message):
     if str(user) not in users:
         file.write(str(user) + '\n')
     file.close()
-
-    if message.text != None and 'хуй' in message.text.lower():
-        if 'саня' not in message.text.lower():
-            await message.answer(message.text)
+    await message.answer(message.text)
 
 
 async def main():

@@ -541,6 +541,11 @@ async def main():
     # await bot.restrict_chat_member(-1002326046662, 7187106984, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(minutes=2))
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+    while True:
+        r = random.randint(1,4)
+        if r == 1:
+            await bot.send_message(-1002326046662, 'ГООООООООООООООООООООООООООООООООЛ')
+            await asyncio.sleep(3600)
 
 
 asyncio.run(main())

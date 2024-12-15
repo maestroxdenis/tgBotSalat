@@ -1,4 +1,5 @@
 import datetime
+import re
 import sqlite3 as sq
 import asyncio
 import json
@@ -13,7 +14,7 @@ from aiogram.types import FSInputFile, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
-bot = Bot(token='хуй')
+bot = Bot(token='7540561391:AAH-2_dRdlpGjI34JDC5pBb-0SOCsT5My3A')
 dp = Dispatcher()
 router = Router()
 dp.include_router(router)
@@ -344,14 +345,14 @@ async def shoot(message: types.Message):
     l.remove(user)
 
 
-@router.message(F.text.lower() == 'кто сосал?')
+@router.message(F.text.lower().startwith('кто '))
 async def hui(message: types.Message):
     file = open('all_users.txt', 'a+')
     file.seek(0)
     users = file.readlines()
     users = [x[0:-1] for x in users]
     user = random.choice(users)
-    await message.answer('@' + user + ' сосал')
+    await message.answer('@' + user + f' {message.text[4:]}')
 
 
 @router.message()

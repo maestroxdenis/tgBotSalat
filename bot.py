@@ -503,7 +503,7 @@ async def hui(message: types.Message):
     users = file.readlines()
     users = [x[0:-1] for x in users]
     user = random.choice(users)
-    await message.answer('@' + user + f' {message.text[4:].replace("мне", "тебе")}')
+    await message.answer('@' + user + f' {message.text[4:].replace("мне", "тебе").replace("меня", "тебя").replace("мной", "тобой")}')
 
 
 @router.message(F.text.lower() == 'мяф')

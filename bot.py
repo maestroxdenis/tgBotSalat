@@ -527,6 +527,14 @@ async def hui(message: types.Message):
     await message.answer(message.text)
 
 
+async def gol():
+    while True:
+        r = random.randint(1,3)
+        if r == 1:
+            await bot.send_message(-1002326046662, 'ГООООООООООООООООООООООООООООООООЛ')
+            await asyncio.sleep(1800)
+
+
 async def main():
     # file = open('users.txt', 'a+')
     # file.seek(0)
@@ -539,13 +547,9 @@ async def main():
     # user = await bot.get_chat_member(-1002326046662, 681101149)
     # print(user.status, user.until_date)
     # await bot.restrict_chat_member(-1002326046662, 7187106984, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(minutes=2))
+    await gol()
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
-    while True:
-        r = random.randint(1,4)
-        if r == 1:
-            await bot.send_message(-1002326046662, 'ГООООООООООООООООООООООООООООООООЛ')
-            await asyncio.sleep(3600)
 
 
 asyncio.run(main())

@@ -1,4 +1,5 @@
 import datetime
+import os
 import re
 import threading
 import sqlite3 as sq
@@ -56,6 +57,8 @@ async def blackjack(message: types.Message):
     file.write(f'{c1} {c2}\n{d1} {d2}' + '\n')
     file.write(f'{str(message.from_user.id)}')
     file.close()
+    await asyncio.sleep(3600)
+    os.remove(f'{m.message_id}.txt')
 
 
 @router.callback_query(F.data == 'add')

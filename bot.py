@@ -1,5 +1,6 @@
 import datetime
 import os
+import glob
 import re
 import threading
 import sqlite3 as sq
@@ -612,8 +613,11 @@ async def main():
     #     user = await bot.get_chat_member(-1002326046662, i)
     #     print(i, user.user.username)
     # await bot.restrict_chat_member(-1002326046662, 7187106984, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(minutes=2))
+
     await bot.delete_webhook(drop_pending_updates=True)
     await asyncio.gather(dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types()), gol())
 
 
+for i in glob.glob('[0-9]*.txt'):
+    os.remove(i)
 asyncio.run(main())

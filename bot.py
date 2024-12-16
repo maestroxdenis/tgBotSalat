@@ -532,7 +532,7 @@ async def gol():
     while True:
         r = random.randint(1,1)
         if r == 1:
-            await bot.send_message(-1002326046662, 'ГООООООООООООООООООООООООООООООООЛ')
+            await bot.send_audio(-1002326046662, FSInputFile('goooool.mp3'), caption='ГООООООООООООЛ')
             await asyncio.sleep(1800)
 
 

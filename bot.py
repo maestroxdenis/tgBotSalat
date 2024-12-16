@@ -23,7 +23,7 @@ dp.include_router(router)
 
 base = sq.connect('stats.db')
 cur = base.cursor()
-base.execute('CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, username, win INTEGER, loose INTEGER, draw INTEGER, logs TEXT)')
+base.execute('CREATE TABLE IF NOT EXISTS users(username TEXT PRIMARY KEY, win INTEGER, loose INTEGER, draw INTEGER, logs TEXT)')
 base.commit()
 
 
@@ -33,6 +33,12 @@ active = False
 
 @router.message(Command('blackjack'))
 async def blackjack(message: types.Message):
+    if '@' in message.text:
+        name = message.text[message.text.index('@'):]
+        if name == '@VladislavZili':
+            id = 673615097
+            await message.answer(f'{name}, @{message.from_user.username} вызывает тебя в Блекджек!')
+
     deck = ['2','3','4','5','6','7','8','9','10','10','10','10','11']*4
     c1 = random.choice(deck)
     deck.remove(c1)
@@ -339,84 +345,124 @@ async def n(callback: types.CallbackQuery):
     await callback.answer()
 
 
+@router.message(Command('mystats'))
+async def stats(message: types.Message):
+    user = message.from_user.username
+    try:
+        stats = cur.execute('SELECT * FROM users WHERE username == ?',(message.from_user.username,)).fetchone()
+        username = stats[0]
+        text = '--' * len(username)
+        text += ' Победы ------- Поражения ------- Ничьи -------\n'
+        text += '@' + str(stats[0]) + ' ------------- '
+        for i in stats[1:4]:
+            text += str(i) + ' ------------- '
+        text = text[:-7]
+        text += '\n'
+        for i in stats[4:]:
+            text += i + '\n'
+        await message.answer(text)
+    except:
+        await message.answer('У вас ничего нет!')
+
+
 @router.message(Command('stats'))
 async def stats(message: types.Message):
-    user = message.from_user.id
+    try:
+        stats = cur.execute('SELECT * FROM users').fetchall()
+    except:
+        pass
+    usernames = cur.execute('SELECT username FROM users').fetchall()
+    usernames = [i[0] for i in usernames]
+    text = '--' * len(max(usernames, key=len))
+    text += ' Победы ------- Поражения ------- Ничьи -------\n'
+    for i in stats:
+        username = i[0] + ' ' + '-' * (len(max(usernames, key=len)) - len(i[0])) + '---------' + ' '
+        text += username
+        for j in i[1:4]:
+            text += str(j) + ' ------------------- '
+        text = text[:-13]
+        text += '\n'
+    await message.answer(text)
 
 
 @router.message(Command('duel'))
 async def duel(message: types.Message):
-    # try:
-    # user = message.from_user.id
-    # cur.execute('INSERT INTO users (userid, username, win, loose, draw, logs) VALUES(?,?,?,?,?,?)', (message.from_user.id, message.from_user.username, 0, 0, 0, ''))
-    # base.commit()
-    # except:
-    #     pass # user already recorded
+    try:
+        user = message.from_user.id
+        cur.execute('INSERT INTO users (username, win, loose, draw, logs) VALUES(?,?,?,?,?)', (message.from_user.username, 0, 0, 0, ''))
+        base.commit()
+    except:
+        pass # user already recorded
     kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Стреляться!', callback_data='s')).as_markup()
     await message.answer(f'@{message.from_user.username} вызывает на дуэль!\n\nПравила дуэли: проигравший дарит победителю гифт. Не участвуйте в дуэлях, если не сможете подарить гифт, иначе будете чушпанами!', reply_markup=kb)
 
 
 @router.callback_query(F.data == 's')
 async def d(callback: types.CallbackQuery):
-    duelist = callback.message.text.split(' ')[0]
+    duelist = callback.message.text.split(' ')[0][1:]
+    try:
+        cur.execute('INSERT INTO users (username, win, loose, draw, logs) VALUES(?,?,?,?,?)', (callback.from_user.username, 0, 0, 0, ''))
+    except:
+        pass
+    base.commit()
     r = random.randint(1,3)
     match r:
         case 1:
-            await bot.edit_message_text(text=f'{duelist} пристрелил @{callback.from_user.username} и заслужил от него гифт!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
-            #
-            # win = cur.execute('SELECT win FROM users WHERE id == ?', (duelist,)).fetchone()[0]
-            # win += 1
-            # cur.execute('UPDATE users SET win == ? WHERE id == ?', (win, duelist))
-            # logs = cur.execute('SELECT logs FROM users WHERE id == ?', (duelist,)).fetchone()[0]
-            # logs += f"Победа над {callback.from_user.id} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M')}\n"
-            # cur.execute('UPDATE users SET logs == ? WHERE id == ?', (logs, duelist))
-            # base.commit()
-            #
-            # loose = cur.execute('SELECT loose FROM users WHERE id == ?', (callback.from_user.id,)).fetchone()[0]
-            # loose += 1
-            # cur.execute('UPDATE users SET loose == ? WHERE id == ?', (loose, callback.from_user.id))
-            # logs = cur.execute('SELECT logs FROM users WHERE id == ?', (callback.from_user.id,)).fetchone()[0]
-            # logs += f"Поражение от {duelist} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M')}\n"
-            # cur.execute('UPDATE users SET logs == ? WHERE id == ?', (logs, callback.from_user.id))
-            # base.commit()
+            await bot.edit_message_text(text=f'@{duelist} пристрелил @{callback.from_user.username} и заслужил от него гифт!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
+
+            win = cur.execute('SELECT win FROM users WHERE username == ?', (duelist,)).fetchone()[0]
+            win += 1
+            cur.execute('UPDATE users SET win == ? WHERE username == ?', (win, duelist))
+            logs = cur.execute('SELECT logs FROM users WHERE username == ?', (duelist,)).fetchone()[0]
+            logs += f"Победа над @{callback.from_user.username} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
+            cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, duelist))
+            base.commit()
+
+            loose = cur.execute('SELECT loose FROM users WHERE username == ?', (callback.from_user.username,)).fetchone()[0]
+            loose += 1
+            cur.execute('UPDATE users SET loose == ? WHERE username == ?', (loose, callback.from_user.username))
+            logs = cur.execute('SELECT logs FROM users WHERE username == ?', (callback.from_user.username,)).fetchone()[0]
+            logs += f"Поражение от @{duelist} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
+            cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, callback.from_user.username))
+            base.commit()
 
         case 2:
-            await bot.edit_message_text(text=f'@{callback.from_user.username} поставил раком {duelist} и вправе требовать от него подарок!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
+            await bot.edit_message_text(text=f'@{callback.from_user.username} поставил раком @{duelist} и вправе требовать от него подарок!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
 
-            # win = cur.execute('SELECT win FROM users WHERE id == ?', (callback.from_user.id,)).fetchone()[0]
-            # win += 1
-            # cur.execute('UPDATE users SET win == ? WHERE id == ?', (win, callback.from_user.id))
-            # logs = cur.execute('SELECT logs FROM users WHERE id == ?', (callback.from_user.id,)).fetchone()[0]
-            # logs += f"Победа над {duelist} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M')}\n"
-            # cur.execute('UPDATE users SET logs == ? WHERE id == ?', (logs, callback.from_user.id))
-            # base.commit()
-            #
-            # loose = cur.execute('SELECT loose FROM users WHERE id == ?', (duelist,)).fetchone()[0]
-            # loose += 1
-            # cur.execute('UPDATE users SET loose == ? WHERE id == ?', (loose, duelist))
-            # logs = cur.execute('SELECT logs FROM users WHERE id == ?', (duelist,)).fetchone()[0]
-            # logs += f"Поражение от {callback.from_user.id} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M')}\n"
-            # cur.execute('UPDATE users SET logs == ? WHERE id == ?', (logs, duelist))
-            # base.commit()
+            win = cur.execute('SELECT win FROM users WHERE username == ?', (callback.from_user.username,)).fetchone()[0]
+            win += 1
+            cur.execute('UPDATE users SET win == ? WHERE username == ?', (win, callback.from_user.username))
+            logs = cur.execute('SELECT logs FROM users WHERE username == ?', (callback.from_user.username,)).fetchone()[0]
+            logs += f"Победа над @{duelist} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
+            cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, callback.from_user.username))
+            base.commit()
+
+            loose = cur.execute('SELECT loose FROM users WHERE username == ?', (duelist,)).fetchone()[0]
+            loose += 1
+            cur.execute('UPDATE users SET loose == ? WHERE username == ?', (loose, duelist))
+            logs = cur.execute('SELECT logs FROM users WHERE username == ?', (duelist,)).fetchone()[0]
+            logs += f"Поражение от @{callback.from_user.username} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
+            cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, duelist))
+            base.commit()
 
         case 3:
-            await bot.edit_message_text(text=f'@{callback.from_user.username} и {duelist} убили друг друга и находятся в паритете!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
+            await bot.edit_message_text(text=f'@{callback.from_user.username} и @{duelist} убили друг друга и находятся в паритете!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
 
-            # draw = cur.execute('SELECT draw FROM users WHERE id == ?', (callback.from_user.id,)).fetchone()[0]
-            # draw += 1
-            # cur.execute('UPDATE users SET draw == ? WHERE id == ?', (draw, callback.from_user.id))
-            # logs = cur.execute('SELECT logs FROM users WHERE id == ?', (callback.from_user.id,)).fetchone()[0]
-            # logs += f"Ничья с {duelist} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M')}\n"
-            # cur.execute('UPDATE users SET logs == ? WHERE id == ?', (logs, callback.from_user.id))
-            # base.commit()
-            #
-            # draw = cur.execute('SELECT draw FROM users WHERE id == ?', (duelist,)).fetchone()[0]
-            # draw += 1
-            # cur.execute('UPDATE users SET draw == ? WHERE id == ?', (draw, duelist))
-            # logs = cur.execute('SELECT logs FROM users WHERE id == ?', (duelist,)).fetchone()[0]
-            # logs += f"Ничья с {callback.from_user.id} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M')}\n"
-            # cur.execute('UPDATE users SET logs == ? WHERE id == ?', (logs, duelist))
-            # base.commit()
+            draw = cur.execute('SELECT draw FROM users WHERE username == ?', (callback.from_user.username,)).fetchone()[0]
+            draw += 1
+            cur.execute('UPDATE users SET draw == ? WHERE username == ?', (draw, callback.from_user.username))
+            logs = cur.execute('SELECT logs FROM users WHERE username == ?', (callback.from_user.username,)).fetchone()[0]
+            logs += f"Ничья с @{duelist} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
+            cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, callback.from_user.username))
+            base.commit()
+
+            draw = cur.execute('SELECT draw FROM users WHERE username == ?', (duelist,)).fetchone()[0]
+            draw += 1
+            cur.execute('UPDATE users SET draw == ? WHERE username == ?', (draw, duelist))
+            logs = cur.execute('SELECT logs FROM users WHERE username == ?', (duelist,)).fetchone()[0]
+            logs += f"Ничья с @{callback.from_user.username} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
+            cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, duelist))
+            base.commit()
 
     await callback.answer()
 
@@ -497,7 +543,7 @@ async def shoot(message: types.Message):
     l.remove(user)
 
 
-@router.message(F.text.lower().startswith('кто '))
+@router.message(F.text.lower().startswith('кто ', 'кого', 'кому', 'кем', 'о ком'))
 async def hui(message: types.Message):
     file = open('all_users.txt', 'a+')
     file.seek(0)
@@ -514,7 +560,7 @@ async def hui(message: types.Message):
     await bot.send_document(message.chat.id, gif)
 
 
-@router.message(F.text.lower().contains('хуй'))
+@router.message(F.text.lower().contains('ху'))
 async def hui(message: types.Message):
 
     file = open('all_users.txt', 'a+')
@@ -545,12 +591,9 @@ async def main():
     # for i in users:
     #     user = await bot.get_chat_member(-1002326046662, i)
     #     print(i, user.user.username)
-    # user = await bot.get_chat_member(-1002326046662, 681101149)
-    # print(user.status, user.until_date)
     # await bot.restrict_chat_member(-1002326046662, 7187106984, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(minutes=2))
     await bot.delete_webhook(drop_pending_updates=True)
     await asyncio.gather(dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types()), gol())
 
 
-threading.Thread(target=gol).start()
 asyncio.run(main())

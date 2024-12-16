@@ -301,16 +301,33 @@ async def roulette(message: types.Message):
         file.close()
         await asyncio.sleep(60)
         active = False
-        return
-    for i in range(3):
-        looser = random.choice(users)
-        await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}\nЛузер: {looser}', chat_id=-1002326046662, message_id=message_id)
-        await asyncio.sleep(0.5)
-        await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}\nЛузер: ', chat_id=-1002326046662, message_id=message_id)
-        await asyncio.sleep(0.5)
+    else:
+        for i in range(3):
+            looser = random.choice(users)
+            await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}\nЛузер: {looser}', chat_id=-1002326046662, message_id=message_id)
+            await asyncio.sleep(0.5)
+            await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}\nЛузер: ', chat_id=-1002326046662, message_id=message_id)
+            await asyncio.sleep(0.5)
     await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}\nЛузер: {looser}', chat_id=-1002326046662, message_id=message_id)
     file = open('roulette.txt', 'w')
     file.close()
+
+    win = cur.execute('SELECT win FROM users WHERE username == ?', (winner[1:],)).fetchone()[0]
+    win += 1
+    cur.execute('UPDATE users SET win == ? WHERE username == ?', (win, winner[1:]))
+    logs = cur.execute('SELECT logs FROM users WHERE username == ?', (winner[1:],)).fetchone()[0]
+    logs += f"Победа в рулетке над @{looser[1:]} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
+    cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, winner[1:]))
+    base.commit()
+
+    loose = cur.execute('SELECT loose FROM users WHERE username == ?', (looser[1:],)).fetchone()[0]
+    loose += 1
+    cur.execute('UPDATE users SET loose == ? WHERE username == ?', (loose, looser[1:]))
+    logs = cur.execute('SELECT logs FROM users WHERE username == ?', (looser[1:],)).fetchone()[0]
+    logs += f"Поражение в рулетке от @{winner[1:]} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
+    cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, looser[1:]))
+    base.commit()
+
     await asyncio.sleep(60)
     active = False
 

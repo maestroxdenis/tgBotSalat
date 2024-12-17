@@ -2,7 +2,6 @@ import datetime
 import os
 import glob
 import re
-import threading
 import sqlite3 as sq
 import asyncio
 import json
@@ -193,42 +192,52 @@ async def newgame(callback: types.CallbackQuery):
 
 
 @router.message(Command('rasstrel'))
-async def mutes(message: types.Message):
-    user = message.from_user.id
+async def rasstrel(message: types.Message):
     user = await bot.get_chat_member(message.chat.id, message.from_user.id)
     status = user.status
     if message.from_user.id == 7187106984 or status == 'administrator' or status == 'owner' or status == 'creator':
-        await message.answer('Вам пизда')
-        file = open('users.txt', 'a+')
-        file.seek(0)
-        users = file.readlines()
-        file.close()
-        users = [x[0:-1] for x in users]
-        for i in users:
-            user = await bot.get_chat_member(message.chat.id, int(i))
-            status = user.status
-            if status != 'creator' and status != 'owner' and status != 'administrator':
-                await bot.restrict_chat_member(message.chat.id, int(i), permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(weeks=20))
+        try:
+            userid = int(re.search('\d+', message.text).group())
+            await bot.restrict_chat_member(message.chat.id, userid, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=1))
+            user = await bot.get_chat_member(message.chat.id, userid)
+            await message.answer(f'@{user.user.username} был расстрелян!')
+        except:
+                await message.answer('ГОООООООООООООООООООООООООООООЛ')
+                file = open('users.txt', 'a+')
+                file.seek(0)
+                users = file.readlines()
+                file.close()
+                users = [x[0:-1] for x in users]
+                for i in users:
+                    user = await bot.get_chat_member(message.chat.id, int(i))
+                    status = user.status
+                    if status != 'creator' and status != 'owner' and status != 'administrator':
+                        await bot.restrict_chat_member(message.chat.id, int(i), permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=1))
 
 
 @router.message(Command('unmute'))
-async def mutes(message: types.Message):
-    user = message.from_user.id
+async def unmute(message: types.Message):
     user = await bot.get_chat_member(message.chat.id, message.from_user.id)
     status = user.status
     if message.from_user.id == 7187106984 or status == 'administrator' or status == 'owner' or status == 'creator':
-        file = open('users.txt', 'a+')
-        file.seek(0)
-        users = file.readlines()
-        file.close()
-        users = [x[0:-1] for x in users]
-        text = ''
-        for i in users:
-            user = await bot.get_chat_member(message.chat.id, int(i))
-            user_status = user.status
-            if user_status == 'restricted':
-                await bot.restrict_chat_member(message.chat.id, user.user.id, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(minutes=2))
-        await message.answer('Все муты сняты.')
+        try:
+            userid = int(re.search('\d+', message.text).group())
+            await bot.restrict_chat_member(message.chat.id, userid, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=90))
+            user = await bot.get_chat_member(message.chat.id, userid)
+            await message.answer(f'@{user.user.username} был помилован!')
+        except:
+                file = open('users.txt', 'a+')
+                file.seek(0)
+                users = file.readlines()
+                file.close()
+                users = [x[0:-1] for x in users]
+                text = ''
+                for i in users:
+                    user = await bot.get_chat_member(message.chat.id, int(i))
+                    user_status = user.status
+                    if user_status == 'restricted':
+                        await bot.restrict_chat_member(message.chat.id, user.user.id, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=90))
+                await message.answer('Все помилованы!')
 
 
 @router.message(Command('mutes'))
@@ -238,14 +247,16 @@ async def mutes(message: types.Message):
     users = file.readlines()
     file.close()
     users = [x[0:-1] for x in users]
-    text = ' '
+    text = ''
     for i in users:
         user = await bot.get_chat_member(message.chat.id, int(i))
         user_status = user.status
+        user_id = user.user.id
         if user_status == 'restricted':
             name = user.user.username
             if user.user.username == None: name = 'None'
-            text = text + '@' + name + ' - ' + (user.until_date + timedelta(hours=3)).strftime("%d/%m/%Y, %H:%M:%S") + '\n'
+            text = text + name + f' [{user_id}]' ' - ' + (user.until_date + timedelta(hours=3)).strftime("%d/%m/%Y, %H:%M:%S") + '\n'
+    if text == '': text = 'Все свободны! УРАААААААААААААААААА!'
     await message.answer(text)
 
 
@@ -320,7 +331,7 @@ async def roulette(message: types.Message):
     win += 1
     cur.execute('UPDATE users SET win == ? WHERE username == ?', (win, winner[1:]))
     logs = cur.execute('SELECT logs FROM users WHERE username == ?', (winner[1:],)).fetchone()[0]
-    logs += f"Победа в рулетке над @{looser[1:]} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
+    logs += f"Победа в рулетке над {looser[1:]} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
     cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, winner[1:]))
     base.commit()
 
@@ -328,7 +339,7 @@ async def roulette(message: types.Message):
     loose += 1
     cur.execute('UPDATE users SET loose == ? WHERE username == ?', (loose, looser[1:]))
     logs = cur.execute('SELECT logs FROM users WHERE username == ?', (looser[1:],)).fetchone()[0]
-    logs += f"Поражение в рулетке от @{winner[1:]} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
+    logs += f"Поражение в рулетке от {winner[1:]} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
     cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, looser[1:]))
     base.commit()
 
@@ -338,6 +349,12 @@ async def roulette(message: types.Message):
 
 @router.callback_query(F.data == 'u')
 async def u(callback: types.CallbackQuery):
+    try:
+        user = callback.from_user.id
+        cur.execute('INSERT INTO users (username, win, loose, draw, logs) VALUES(?,?,?,?,?)', (callback.from_user.username, 0, 0, 0, ''))
+        base.commit()
+    except:
+        pass # user already recorded
     user = callback.from_user.username
     file = open('roulette.txt', 'a+')
     file.seek(0)
@@ -372,12 +389,12 @@ async def stats(message: types.Message):
     try:
         stats = cur.execute('SELECT * FROM users WHERE username == ?',(message.from_user.username,)).fetchone()
         username = stats[0]
-        text = '--' * len(username)
-        text += ' Победы ------- Поражения ------- Ничьи -------\n'
-        text += '@' + str(stats[0]) + ' ------------- '
+        # text = '--' * len(username)
+        text = '[Победы:Поражения:Ничьи]\n'
+        text += str(stats[0]) + ': '
         for i in stats[1:4]:
-            text += str(i) + ' ------------- '
-        text = text[:-7]
+            text += str(i) + ':'
+        text = text[:-1]
         text += '\n'
         for i in stats[4:]:
             text += i + '\n'
@@ -392,16 +409,16 @@ async def stats(message: types.Message):
         stats = cur.execute('SELECT * FROM users').fetchall()
     except:
         pass
-    usernames = cur.execute('SELECT username FROM users').fetchall()
-    usernames = [i[0] for i in usernames]
-    text = '--' * len(max(usernames, key=len))
-    text += ' Победы ------- Поражения ------- Ничьи -------\n'
+    # usernames = cur.execute('SELECT username FROM users').fetchall()
+    # usernames = [i[0] for i in usernames]
+    # text = '--' * len(max(usernames, key=len))
+    text = '[Победы:Поражения:Ничьи]\n'
     for i in stats:
-        username = i[0] + ' ' + '-' * (len(max(usernames, key=len)) - len(i[0])) + '---------' + ' '
-        text += username
+        # username = i[0] + ' ' + '-' * (len(max(usernames, key=len)) - len(i[0])) + '---------' + ' '
+        text += i[0] + ': '
         for j in i[1:4]:
-            text += str(j) + ' ------------------- '
-        text = text[:-13]
+            text += str(j) + ':'
+        text = text[:-1]
         text += '\n'
     await message.answer(text)
 
@@ -435,7 +452,7 @@ async def d(callback: types.CallbackQuery):
             win += 1
             cur.execute('UPDATE users SET win == ? WHERE username == ?', (win, duelist))
             logs = cur.execute('SELECT logs FROM users WHERE username == ?', (duelist,)).fetchone()[0]
-            logs += f"Победа над @{callback.from_user.username} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
+            logs += f"Победа над {callback.from_user.username} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
             cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, duelist))
             base.commit()
 
@@ -443,7 +460,7 @@ async def d(callback: types.CallbackQuery):
             loose += 1
             cur.execute('UPDATE users SET loose == ? WHERE username == ?', (loose, callback.from_user.username))
             logs = cur.execute('SELECT logs FROM users WHERE username == ?', (callback.from_user.username,)).fetchone()[0]
-            logs += f"Поражение от @{duelist} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
+            logs += f"Поражение от {duelist} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
             cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, callback.from_user.username))
             base.commit()
 
@@ -454,7 +471,7 @@ async def d(callback: types.CallbackQuery):
             win += 1
             cur.execute('UPDATE users SET win == ? WHERE username == ?', (win, callback.from_user.username))
             logs = cur.execute('SELECT logs FROM users WHERE username == ?', (callback.from_user.username,)).fetchone()[0]
-            logs += f"Победа над @{duelist} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
+            logs += f"Победа над {duelist} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
             cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, callback.from_user.username))
             base.commit()
 
@@ -462,7 +479,7 @@ async def d(callback: types.CallbackQuery):
             loose += 1
             cur.execute('UPDATE users SET loose == ? WHERE username == ?', (loose, duelist))
             logs = cur.execute('SELECT logs FROM users WHERE username == ?', (duelist,)).fetchone()[0]
-            logs += f"Поражение от @{callback.from_user.username} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
+            logs += f"Поражение от {callback.from_user.username} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
             cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, duelist))
             base.commit()
 
@@ -473,7 +490,7 @@ async def d(callback: types.CallbackQuery):
             draw += 1
             cur.execute('UPDATE users SET draw == ? WHERE username == ?', (draw, callback.from_user.username))
             logs = cur.execute('SELECT logs FROM users WHERE username == ?', (callback.from_user.username,)).fetchone()[0]
-            logs += f"Ничья с @{duelist} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
+            logs += f"Ничья с {duelist} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
             cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, callback.from_user.username))
             base.commit()
 
@@ -481,7 +498,7 @@ async def d(callback: types.CallbackQuery):
             draw += 1
             cur.execute('UPDATE users SET draw == ? WHERE username == ?', (draw, duelist))
             logs = cur.execute('SELECT logs FROM users WHERE username == ?', (duelist,)).fetchone()[0]
-            logs += f"Ничья с @{callback.from_user.username} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
+            logs += f"Ничья с {callback.from_user.username} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
             cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, duelist))
             base.commit()
 
@@ -603,6 +620,20 @@ async def gol():
             await asyncio.sleep(1800)
 
 
+@router.message(Command('members'))
+async def get_members(message: types.Message):
+    text = ''
+    file = open('users.txt', 'a+')
+    file.seek(0)
+    users = file.readlines()
+    users = [x[0:-1] for x in users]
+    file.close()
+    for i in users:
+        user = await bot.get_chat_member(message.chat.id, i)
+        text += f'{user.user.username}:{user.user.id}\n'
+    await message.answer(text)
+
+
 async def main():
     # file = open('users.txt', 'a+')
     # file.seek(0)
@@ -612,7 +643,7 @@ async def main():
     # for i in users:
     #     user = await bot.get_chat_member(-1002326046662, i)
     #     print(i, user.user.username)
-    # await bot.restrict_chat_member(-1002326046662, 7187106984, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(minutes=2))
+    # await bot.restrict_chat_member(-1002326046662, 7187106984, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=90))
 
     await bot.delete_webhook(drop_pending_updates=True)
     await asyncio.gather(dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types()), gol())

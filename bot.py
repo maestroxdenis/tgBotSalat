@@ -350,7 +350,6 @@ async def roulette(message: types.Message):
 @router.callback_query(F.data == 'u')
 async def u(callback: types.CallbackQuery):
     try:
-        user = callback.from_user.id
         cur.execute('INSERT INTO users (username, win, loose, draw, logs) VALUES(?,?,?,?,?)', (callback.from_user.username, 0, 0, 0, ''))
         base.commit()
     except:
@@ -505,90 +504,147 @@ async def d(callback: types.CallbackQuery):
     await callback.answer()
 
 
+@router.callback_query(F.data == 'bye')
+async def bye(callback: types.CallbackQuery):
+    username = re.search('@\w*,', callback.message.text).group()[:-1]
+    if callback.from_user.username == username:
+        await bot.send_message(callback.message.chat.id, f'{username} трусливо сбежал! Гоните его! Насмехайтесь над ним!')
+    await callback.answer()
+
+
+@router.callback_query(F.data == 'shoot')
+async def shootduel(callback: types.CallbackQuery):
+    username1 = re.search('@\w*,', callback.message.text).group()[:-1]
+    if '@' + callback.from_user.username != username1:
+        return
+    userid1 = callback.from_user.id
+
+    file = open('members.txt', 'r')
+    user_seq = file.readlines()
+    file.close()
+    user_seq = [x[:-1] for x in user_seq]
+    user_dict = {x[0] : x[1] for x in [i.split(':') for i in user_seq]}
+    username2 = re.search(' @\w*', callback.message.text).group()[1:]
+    userid2 = user_dict[username2]
+
+    d = {username1:userid1, username2:userid2}
+
+    opponents = [username1, username2]
+    dead = random.choice(opponents)
+    opponents.remove(dead)
+
+    mute_hours_seq = [x for x in range(1, 9)]
+    mute_hours = random.choice(mute_hours_seq)
+    hours_declension = dict(sorted(list({key: 'час' for key in [1,21]}.items()) +
+                            list({key: 'часа' for key in [2,3,4,22,23,24]}.items()) +
+                            list({key: 'часов' for key in [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]}.items())))
+
+    await callback.message.delete_reply_markup()
+    await bot.send_message(callback.message.chat.id, f'{opponents[0]} отправил {dead} в Вальгаллу на {mute_hours} {hours_declension[mute_hours]}. {dead}, Ваше последнее слово?')
+    await asyncio.sleep(10)
+    gif = FSInputFile('buckshot-roulette.mp4')
+    await bot.send_video(callback.message.chat.id, video=gif)
+    await bot.restrict_chat_member(callback.message.chat.id, d[dead], permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(hours=mute_hours))
+
+    await callback.answer()
+
+
 @router.message(Command('shoot'))
 async def shoot(message: types.Message):
     user = message.from_user.id
-    file = open('users.txt', 'a+')
-    file.seek(0)
-    users = file.readlines()
-    users = [x[0:-1] for x in users]
-    if str(user) not in users:
-        file.write(str(user) + '\n')
-        users.append(str(user))
-    file.close()
-    t = random.randint(1, 8)
-    match t:
-        case 1:
-            minutes = 5
-            bantime = timedelta(minutes=minutes)
-        case 2:
-            minutes = 15
-            bantime = timedelta(minutes=minutes)
-        case 3:
-            minutes = 30
-            bantime = timedelta(minutes=minutes)
-        case 4:
-            minutes = 60
-            bantime = timedelta(minutes=minutes)
-        case 5:
-            minutes = 120
-            bantime = timedelta(minutes=minutes)
-        case 6:
-            minutes = 180
-            bantime = timedelta(minutes=minutes)
-        case 7:
-            minutes = 240
-            bantime = timedelta(minutes=minutes)
-        case 8:
-            minutes = 300
-            bantime = timedelta(minutes=minutes)
+
+    # checking for 60 sec cooldown
     if user in l:
         return
     l.append(user)
-    gif = FSInputFile('buckshot-roulette.mp4')
-    r = random.randint(1,12)
-    us = await bot.get_chat_member(message.chat.id, message.from_user.id)
-    m = f'@{message.from_user.username} промахнулся и попал в '
-    if us.status == 'owner' or us.status == 'creator' or us.status == 'administrator':
-        l.remove(user)
-        r = 1
-        m = f'@{us.user.username} выстрелил в '
-    if r == 1:
-        num = len(users)
-        r1 = random.randint(0, num-1)
-        unlucky_user_id = users[r1]
+
+    # checking for shoot with another member
+    file = open('members.txt', 'r')
+    user_seq = file.readlines()
+    file.close()
+    user_seq = [x[:-1] for x in user_seq]
+    user_dict = {x[0] : x[1] for x in [i.split(':') for i in user_seq]}
+    username = re.search(' @\w*', message.text)
+    if username != None:
+        username = username.group()[1:]
+        try:
+            user = await bot.get_chat_member(message.chat.id, int(user_dict[username]))
+        except:
+            pass
+        else:
+            kb = InlineKeyboardBuilder().row(InlineKeyboardButton(text='Стрелять!', callback_data='shoot')).row(InlineKeyboardButton(text='Не чето не хочу пока', callback_data='bye')).as_markup()
+            await message.answer(f'@{user.user.username}, @{message.from_user.username} вызывает Вас на дуэль! Проигравший отправится отдыхать на срок 1 до 24 часов!', reply_markup=kb)
+            return
+
+
+    # get members.txt from file: contains list of members.txt who whenever used command /shoot only
+    file = open('users.txt', 'a+')
+    file.seek(0)
+    users_id = file.readlines()
+    users_id = [x[0:-1] for x in users_id]
+    if str(user) not in users_id:
+        file.write(str(user) + '\n')
+        users_id.append(str(user))
+    file.close()
+
+    # duration of mute in minutes
+    mute_hours_seq = [x for x in range(1, 25)]
+    mute_hours = random.choice(mute_hours_seq)
+    hours_declension = dict(sorted(list({key: 'час' for key in [1,21]}.items()) +
+                            list({key: 'часа' for key in [2,3,4,22,23,24]}.items()) +
+                            list({key: 'часов' for key in [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]}.items())))
+
+
+    # russian roulette for mute [1h-24h]
+    shot1 = random.randint(1, 6)
+    if shot1 == 1:
+        await message.answer(f'Увы! Мут на {mute_hours} {hours_declension[mute_hours]}. Ваше последнее слово?')
+        await asyncio.sleep(10)
+        gif = FSInputFile('buckshot-roulette.mp4')
+        await bot.send_video(message.chat.id, video=gif)
+        await bot.restrict_chat_member(message.chat.id, message.from_user.id, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(hours=mute_hours))
+    else:
+        await message.answer('В этот раз Вам повезло! Или нет? Как знать...')
+
+
+    # russian roulette for mute [1h-24h] - miss in another member
+    shot2 = random.randint(1, 24)
+    if shot2 == 1:
+        unlucky_user_id = random.choice(users_id)
         unlucky_user = await bot.get_chat_member(message.chat.id, int(unlucky_user_id))
         unlucky_username = unlucky_user.user.username
         unlucky_user_status = unlucky_user.status
-        await message.answer(f'{m}@{unlucky_username} и подарил ему мут на {minutes} минут! @{unlucky_username}, Ваше последнее слово?')
-        await asyncio.sleep(10)
-        await bot.send_document(message.chat.id, gif)
         if unlucky_user_status == 'restricted':
-            bantime = unlucky_user.until_date + timedelta(minutes=minutes)
-            await bot.restrict_chat_member(message.chat.id, int(unlucky_user_id), permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=bantime)
+            bantime = unlucky_user.until_date + timedelta(hours=mute_hours)
         else:
-            await bot.restrict_chat_member(message.chat.id, int(unlucky_user_id), permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=bantime)
-    else:
-        r = random.randint(1,6)
-        if r == 1:
-            await message.answer(f'Увы! Мут на {minutes} минут. Ваше последнее слово?')
+            bantime = mute_hours
+
+        if shot1 == 1:
+            await message.answer(f'@{message.from_user.username} прошил себя насквозь и зацепил @{unlucky_username}, уложив его спать на {mute_hours} {hours_declension[mute_hours]}! @{unlucky_username}, Ваше последнее слово?')
             await asyncio.sleep(10)
+            gif = FSInputFile('buckshot-roulette.mp4')
             await bot.send_video(message.chat.id, video=gif)
-            await bot.restrict_chat_member(message.chat.id, message.from_user.id, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=bantime)
+            await bot.restrict_chat_member(message.chat.id, int(unlucky_user_id), permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=bantime)
+
         else:
-            await message.answer('В этот раз Вам повезло! Или нет? Как знать...')
-    await asyncio.sleep(60)
+            await message.answer(f'@{message.from_user.username} промахнулся и попал в @{unlucky_username} и подарил ему мут на {mute_hours} {hours_declension[mute_hours]}! @{unlucky_username}, Ваше последнее слово?')
+            await asyncio.sleep(10)
+            gif = FSInputFile('buckshot-roulette.mp4')
+            await bot.send_document(message.chat.id, gif)
+            await bot.restrict_chat_member(message.chat.id, int(unlucky_user_id), permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=bantime)
+
+    await asyncio.sleep(300)
     l.remove(user)
 
 
-@router.message(F.text.lower().startswith(('кто ', 'кого ', 'кому ', 'кем ', 'о ком ')))
+@router.message(F.text.lower().startswith(('кто ', 'кого ', 'кому ', 'кем ', 'о ком ')).endswith('?'))
 async def hui(message: types.Message):
     file = open('all_users.txt', 'a+')
     file.seek(0)
     users = file.readlines()
     users = [x[0:-1] for x in users]
     user = random.choice(users)
-    await message.answer('@' + user + f' {message.text[4:].replace("мне", "тебе").replace("меня", "тебя").replace("мной", "тобой")}')
+    await message.answer('@' + user + f' {message.text[4:].replace("мне", "тебе").replace("меня", "тебя").replace("мной", "тобой").replace("мой", "твой").replace("мою", "твою").replace("мое", "твое").replace("мои", "твои")}')
 
 
 @router.message(F.text.lower() == 'мяф')
@@ -598,39 +654,35 @@ async def hui(message: types.Message):
     await bot.send_document(message.chat.id, gif)
 
 
-@router.message(F.text.lower().contains('ху'))
-async def hui(message: types.Message):
+# @router.message(F.text.lower().contains('ху'))
+# async def hui(message: types.Message):
+#
+#     file = open('all_users.txt', 'a+')
+#     user = message.from_user.username
+#     file.seek(0)
+#     users = file.readlines()
+#     users = [x[0:-1] for x in users]
+#     if str(user) not in users:
+#         file.write(str(user) + '\n')
+#     file.close()
+#     await message.answer(message.text)
 
-    file = open('all_users.txt', 'a+')
-    user = message.from_user.username
-    file.seek(0)
-    users = file.readlines()
-    users = [x[0:-1] for x in users]
-    if str(user) not in users:
-        file.write(str(user) + '\n')
-    file.close()
-    await message.answer(message.text)
 
-
-async def gol():
-    while True:
-        r = random.randint(1,1)
-        if r == 1:
-            await bot.send_audio(-1002326046662, FSInputFile('goooool.mp3'), caption='ГООООООООООООЛ')
-            await asyncio.sleep(1800)
+# async def gol():
+#     while True:
+#         r = random.randint(1,1)
+#         if r == 1:
+#             await bot.send_audio(-1002326046662, FSInputFile('goooool.mp3'), caption='ГООООООООООООЛ')
+#             await asyncio.sleep(1800)
 
 
 @router.message(Command('members'))
 async def get_members(message: types.Message):
-    text = ''
-    file = open('users.txt', 'a+')
+    file = open('members.txt', 'a+')
     file.seek(0)
-    users = file.readlines()
-    users = [x[0:-1] for x in users]
+    members = file.readlines()
+    text = ''.join(members)
     file.close()
-    for i in users:
-        user = await bot.get_chat_member(message.chat.id, i)
-        text += f'{user.user.username}:{user.user.id}\n'
     await message.answer(text)
 
 
@@ -646,7 +698,7 @@ async def main():
     # await bot.restrict_chat_member(-1002326046662, 7187106984, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=90))
 
     await bot.delete_webhook(drop_pending_updates=True)
-    await asyncio.gather(dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types()), gol())
+    await asyncio.gather(dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types()))
 
 
 for i in glob.glob('[0-9]*.txt'):

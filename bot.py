@@ -512,8 +512,15 @@ async def bye(callback: types.CallbackQuery):
     await callback.answer()
 
 
+@router.callback_query(F.data == 'bye1')
+async def bye(callback: types.CallbackQuery):
+    username = re.search('@\w*', callback.message.text).group()
+    await bot.send_message(callback.message.chat.id, f'{username} трусливо сбежал! Гоните его! Насмехайтесь над ним!')
+    await callback.answer()
+
+
 @router.callback_query(F.data == 'shoot')
-async def shootduel(callback: types.CallbackQuery):
+async def duel(callback: types.CallbackQuery):
     username1 = re.search('@\w*,', callback.message.text).group()[:-1]
     if '@' + callback.from_user.username != username1:
         return
@@ -539,14 +546,67 @@ async def shootduel(callback: types.CallbackQuery):
                             list({key: 'часа' for key in [2,3,4,22,23,24]}.items()) +
                             list({key: 'часов' for key in [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]}.items())))
 
+    dead_user = await bot.get_chat_member(callback.message.chat.id, int(d[dead]))
+    dead_user_status = dead_user.status
+    if dead_user_status == 'restricted':
+        bantime = dead_user.until_date + timedelta(hours=mute_hours)
+    else:
+        bantime = mute_hours
+
     await callback.message.delete_reply_markup()
     await bot.send_message(callback.message.chat.id, f'{opponents[0]} отправил {dead} в Вальгаллу на {mute_hours} {hours_declension[mute_hours]}. {dead}, Ваше последнее слово?')
     await asyncio.sleep(10)
     gif = FSInputFile('buckshot-roulette.mp4')
     await bot.send_video(callback.message.chat.id, video=gif)
     await bot.restrict_chat_member(callback.message.chat.id, d[dead], permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(hours=mute_hours))
-
     await callback.answer()
+
+
+@router.callback_query(F.data == 'duelshoot')
+async def shootduel(callback: types.CallbackQuery):
+    file = open('members.txt', 'r')
+    user_seq = file.readlines()
+    file.close()
+    user_seq = [x[:-1] for x in user_seq]
+    user_dict = {x[0] : x[1] for x in [i.split(':') for i in user_seq]}
+    username1 = re.search('@\w*', callback.message.text).group()
+    userid1 = user_dict[username1]
+
+    username2 = '@' + callback.from_user.username
+    userid2 = callback.from_user.id
+
+    d = {username1:userid1, username2:userid2}
+
+    opponents = [username1, username2]
+    dead = random.choice(opponents)
+    opponents.remove(dead)
+
+    mute_hours_seq = [x for x in range(1, 9)]
+    mute_hours = random.choice(mute_hours_seq)
+    hours_declension = dict(sorted(list({key: 'час' for key in [1,21]}.items()) +
+                            list({key: 'часа' for key in [2,3,4,22,23,24]}.items()) +
+                            list({key: 'часов' for key in [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]}.items())))
+
+    dead_user = await bot.get_chat_member(callback.message.chat.id, int(d[dead]))
+    dead_user_status = dead_user.status
+    if dead_user_status == 'restricted':
+        bantime = dead_user.until_date + timedelta(hours=mute_hours)
+    else:
+        bantime = mute_hours
+
+    await callback.message.delete_reply_markup()
+    await bot.send_message(callback.message.chat.id, f'{opponents[0]} отправил {dead} в Вальгаллу на {mute_hours} {hours_declension[mute_hours]}. {dead}, Ваше последнее слово?')
+    await asyncio.sleep(10)
+    gif = FSInputFile('buckshot-roulette.mp4')
+    await bot.send_video(callback.message.chat.id, video=gif)
+    await bot.restrict_chat_member(callback.message.chat.id, d[dead], permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(hours=mute_hours))
+    await callback.answer()
+
+
+@router.message(Command('duelshoot'))
+async def duelshoot(message: types.Message):
+    kb = InlineKeyboardBuilder().row(InlineKeyboardButton(text='Стрелять!', callback_data='duelshoot')).row(InlineKeyboardButton(text='Не чето не хочу пока', callback_data='bye1')).as_markup()
+    await message.answer(f'@{message.from_user.username} вызывает на дуэль! Проигравший отправится отдыхать на срок 1 до 8 часов!', reply_markup=kb)
 
 
 @router.message(Command('shoot'))
@@ -573,7 +633,7 @@ async def shoot(message: types.Message):
             pass
         else:
             kb = InlineKeyboardBuilder().row(InlineKeyboardButton(text='Стрелять!', callback_data='shoot')).row(InlineKeyboardButton(text='Не чето не хочу пока', callback_data='bye')).as_markup()
-            await message.answer(f'@{user.user.username}, @{message.from_user.username} вызывает Вас на дуэль! Проигравший отправится отдыхать на срок 1 до 24 часов!', reply_markup=kb)
+            await message.answer(f'@{user.user.username}, @{message.from_user.username} вызывает Вас на дуэль! Проигравший отправится отдыхать на срок 1 до 8 часов!', reply_markup=kb)
             return
 
 

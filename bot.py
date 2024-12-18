@@ -513,14 +513,14 @@ async def bye(callback: types.CallbackQuery):
 
 
 @router.callback_query(F.data == 'bye1')
-async def bye(callback: types.CallbackQuery):
-    username = re.search('@\w*', callback.message.text).group()
+async def bye1(callback: types.CallbackQuery):
+    username = callback.from_user.username
     await bot.send_message(callback.message.chat.id, f'{username} трусливо сбежал! Гоните его! Насмехайтесь над ним!')
     await callback.answer()
 
 
 @router.callback_query(F.data == 'shoot')
-async def duel(callback: types.CallbackQuery):
+async def shoot_cb(callback: types.CallbackQuery):
     username1 = re.search('@\w*,', callback.message.text).group()[:-1]
     if '@' + callback.from_user.username != username1:
         return
@@ -540,7 +540,7 @@ async def duel(callback: types.CallbackQuery):
     dead = random.choice(opponents)
     opponents.remove(dead)
 
-    mute_hours_seq = [x for x in range(1, 9)]
+    mute_hours_seq = [1] * 173 + [2] * 115 + [3] * 77 + [4] * 51 + [5] * 34 + [6] * 23 + [7] * 15 + [8] * 10 + [9] * 7 + [10] * 5 + [11] * 3 + [12] * 2
     mute_hours = random.choice(mute_hours_seq)
     hours_declension = dict(sorted(list({key: 'час' for key in [1,21]}.items()) +
                             list({key: 'часа' for key in [2,3,4,22,23,24]}.items()) +
@@ -564,6 +564,7 @@ async def duel(callback: types.CallbackQuery):
 
 @router.callback_query(F.data == 'duelshoot')
 async def shootduel(callback: types.CallbackQuery):
+
     file = open('members.txt', 'r')
     user_seq = file.readlines()
     file.close()
@@ -581,7 +582,7 @@ async def shootduel(callback: types.CallbackQuery):
     dead = random.choice(opponents)
     opponents.remove(dead)
 
-    mute_hours_seq = [x for x in range(1, 9)]
+    mute_hours_seq = [1] * 173 + [2] * 115 + [3] * 77 + [4] * 51 + [5] * 34 + [6] * 23 + [7] * 15 + [8] * 10 + [9] * 7 + [10] * 5 + [11] * 3 + [12] * 2
     mute_hours = random.choice(mute_hours_seq)
     hours_declension = dict(sorted(list({key: 'час' for key in [1,21]}.items()) +
                             list({key: 'часа' for key in [2,3,4,22,23,24]}.items()) +
@@ -605,15 +606,24 @@ async def shootduel(callback: types.CallbackQuery):
 
 @router.message(Command('duelshoot'))
 async def duelshoot(message: types.Message):
+    # checking for 60 sec cooldown
+    user = message.from_user.id
+    if user in l:
+        return
+    l.append(user)
+
     kb = InlineKeyboardBuilder().row(InlineKeyboardButton(text='Стрелять!', callback_data='duelshoot')).row(InlineKeyboardButton(text='Не чето не хочу пока', callback_data='bye1')).as_markup()
     await message.answer(f'@{message.from_user.username} вызывает на дуэль! Проигравший отправится отдыхать на срок 1 до 8 часов!', reply_markup=kb)
+
+    await asyncio.sleep(180)
+    l.remove(user)
 
 
 @router.message(Command('shoot'))
 async def shoot(message: types.Message):
     user = message.from_user.id
 
-    # checking for 60 sec cooldown
+    # checking for 180 sec cooldown
     if user in l:
         return
     l.append(user)
@@ -648,7 +658,7 @@ async def shoot(message: types.Message):
     file.close()
 
     # duration of mute in minutes
-    mute_hours_seq = [x for x in range(1, 25)]
+    mute_hours_seq = [1] * 173 + [2] * 115 + [3] * 77 + [4] * 51 + [5] * 34 + [6] * 23 + [7] * 15 + [8] * 10 + [9] * 7 + [10] * 5 + [11] * 3 + [12] * 2
     mute_hours = random.choice(mute_hours_seq)
     hours_declension = dict(sorted(list({key: 'час' for key in [1,21]}.items()) +
                             list({key: 'часа' for key in [2,3,4,22,23,24]}.items()) +
@@ -693,7 +703,7 @@ async def shoot(message: types.Message):
             await bot.send_document(message.chat.id, gif)
             await bot.restrict_chat_member(message.chat.id, int(unlucky_user_id), permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=bantime)
 
-    await asyncio.sleep(300)
+    await asyncio.sleep(180)
     l.remove(user)
 
 

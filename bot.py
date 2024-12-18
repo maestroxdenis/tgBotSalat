@@ -707,7 +707,7 @@ async def shoot(message: types.Message):
     l.remove(user)
 
 
-@router.message(F.text.lower().startswith(('кто ', 'кого ', 'кому ', 'кем ', 'о ком ')).endswith('?'))
+@router.message(F.text.lower().startswith(('кто ', 'кого ', 'кому ', 'кем ', 'о ком ')) and F.text.lower().endswith('?'))
 async def hui(message: types.Message):
     file = open('all_users.txt', 'a+')
     file.seek(0)

@@ -707,18 +707,18 @@ async def shoot(message: types.Message):
     l.remove(user)
 
 
-@router.message(F.text.lower().startswith(('кто ', 'кого ', 'кому ', 'кем ', 'о ком ')) and F.text.lower().endswith('?'))
-async def hui(message: types.Message):
+@router.message(F.text.lower().startswith(('кто ', 'кого ', 'кому ', 'кем ', 'о ком ')), F.text.lower().endswith('?'))
+async def kto(message: types.Message):
     file = open('all_users.txt', 'a+')
     file.seek(0)
     users = file.readlines()
     users = [x[0:-1] for x in users]
     user = random.choice(users)
-    await message.answer('@' + user + f' {message.text[4:].replace("мне", "тебе").replace("меня", "тебя").replace("мной", "тобой").replace("мой", "твой").replace("мою", "твою").replace("мое", "твое").replace("мои", "твои")}')
+    await message.answer('@' + user + f' {message.text[4:-1].replace("мне", "тебе").replace("меня", "тебя").replace("мной", "тобой").replace("мой", "твой").replace("мою", "твою").replace("мое", "твое").replace("мои", "твои")}')
 
 
 @router.message(F.text.lower() == 'мяф')
-async def hui(message: types.Message):
+async def myaf(message: types.Message):
     myafs = [FSInputFile('myaf1.mp4'), FSInputFile('myaf2.mp4'), FSInputFile('myaf3.mp4'), FSInputFile('myaf4.mp4'), FSInputFile('myaf5.mp4'), FSInputFile('myaf6.mp4'), FSInputFile('myaf7.mp4'), FSInputFile('myaf8.mp4')]
     gif = random.choice(myafs)
     await bot.send_document(message.chat.id, gif)

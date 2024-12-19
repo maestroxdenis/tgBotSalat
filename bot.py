@@ -745,6 +745,36 @@ def pirozhok_dnya():
     else:
         return first_name, username
 
+def gay_dnya():
+    file = open('gay.txt', 'r', encoding="utf-8")
+    file.seek(0)
+    date = file.readline()[:-1]
+    first_name = file.readline()[:-1]
+    username = file.readline()
+    file.close()
+    if datetime.datetime.now().date() > datetime.datetime.strptime(date, '%Y-%m-%d').date():
+        file = open('gay.txt', 'w', encoding="utf-8")
+        csvfile = open('parsed_members.csv', 'r', encoding="utf-8")
+        reader = csv.reader(csvfile)
+        pirozhki = {}
+        for row in reader:
+            pirozhki[row[0]] = row[1]
+        first_name, username = random.choice(list(pirozhki.items()))
+
+        file.write(datetime.datetime.now().date().strftime('%Y-%m-%d') + '\n')
+        file.write(first_name + '\n')
+        file.write(username)
+        file.close()
+
+        return first_name, username
+    else:
+        return first_name, username
+
+@router.message(F.text.lower().contains('гей дня'))
+async def gdn(message: types.Message):
+    first_name, username = gay_dnya()
+    await message.answer(f'<a href="https://t.me/{username}">{first_name}</a> гей дня', parse_mode='HTML', disable_web_page_preview=True)
+
 
 @router.message(F.text.lower().contains('пирожок дня'))
 async def pdn(message: types.Message):

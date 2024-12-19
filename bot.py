@@ -1,3 +1,4 @@
+import csv
 import datetime
 import os
 import glob
@@ -6,6 +7,7 @@ import sqlite3 as sq
 import asyncio
 import json
 import random
+import time
 from datetime import timedelta
 import pytz
 
@@ -14,6 +16,7 @@ from aiogram import Bot, Dispatcher, types, Router, F
 from aiogram.filters import Command
 from aiogram.types import FSInputFile, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.utils.markdown import link
 
 
 bot = Bot(token='7540561391:AAH-2_dRdlpGjI34JDC5pBb-0SOCsT5My3A')
@@ -717,6 +720,38 @@ async def kto(message: types.Message):
     await message.answer('@' + user + f' {message.text[4:-1].replace("мне", "тебе").replace("меня", "тебя").replace("мной", "тобой").replace("мой", "твой").replace("мою", "твою").replace("мое", "твое").replace("мои", "твои")}')
 
 
+def pirozhok_dnya():
+    file = open('pirozhok.txt', 'r', encoding="utf-8")
+    file.seek(0)
+    date = file.readline()[:-1]
+    first_name = file.readline()[:-1]
+    username = file.readline()
+    file.close()
+    if datetime.datetime.now().date() > datetime.datetime.strptime(date, '%Y-%m-%d').date():
+        file = open('pirozhok.txt', 'w', encoding="utf-8")
+        csvfile = open('parsed_members.csv', 'r', encoding="utf-8")
+        reader = csv.reader(csvfile)
+        pirozhki = {}
+        for row in reader:
+            pirozhki[row[0]] = row[1]
+        first_name, username = random.choice(list(pirozhki.items()))
+
+        file.write(datetime.datetime.now().date().strftime('%Y-%m-%d') + '\n')
+        file.write(first_name + '\n')
+        file.write(username)
+        file.close()
+
+        return first_name, username
+    else:
+        return first_name, username
+
+
+@router.message(F.text.lower().contains('пирожок дня'))
+async def pdn(message: types.Message):
+    first_name, username = pirozhok_dnya()
+    await message.answer(f'<a href="https://t.me/{username}">{first_name}</a> пирожок дня', parse_mode='HTML', disable_web_page_preview=True)
+
+
 @router.message(F.text.lower() == 'мяф')
 async def myaf(message: types.Message):
     myafs = [FSInputFile('myaf1.mp4'), FSInputFile('myaf2.mp4'), FSInputFile('myaf3.mp4'), FSInputFile('myaf4.mp4'), FSInputFile('myaf5.mp4'), FSInputFile('myaf6.mp4'), FSInputFile('myaf7.mp4'), FSInputFile('myaf8.mp4')]
@@ -764,7 +799,7 @@ async def main():
     # file.close()
     # for i in users:
     #     user = await bot.get_chat_member(-1002326046662, i)
-    #     print(i, user.user.username)
+    #     print(i, user.user.full_name)
     # await bot.restrict_chat_member(-1002326046662, 7187106984, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=90))
 
     await bot.delete_webhook(drop_pending_updates=True)

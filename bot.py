@@ -7,16 +7,22 @@ import sqlite3 as sq
 import asyncio
 import json
 import random
-import time
 from datetime import timedelta
 import pytz
+import pymssql
 
 
 from aiogram import Bot, Dispatcher, types, Router, F
 from aiogram.filters import Command
 from aiogram.types import FSInputFile, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.utils.markdown import link
+
+
+# Define connection parameters
+server = 'testdbsqltgbot.database.windows.net'
+database = 'testdbsqltgbot'
+username = 'tgsalat'
+password = 'salattg1!'
 
 
 bot = Bot(token='7540561391:AAH-2_dRdlpGjI34JDC5pBb-0SOCsT5My3A')
@@ -25,10 +31,49 @@ router = Router()
 dp.include_router(router)
 
 
-base = sq.connect('stats.db')
-cur = base.cursor()
-base.execute('CREATE TABLE IF NOT EXISTS users(username TEXT PRIMARY KEY, win INTEGER, loose INTEGER, draw INTEGER, logs TEXT)')
+
+#old db
+base2 = sq.connect('stats.db')
+cur = base2.cursor()
+base2.execute('CREATE TABLE IF NOT EXISTS users(username TEXT PRIMARY KEY, win INTEGER, loose INTEGER, draw INTEGER, logs TEXT)')
+base2.commit()
+#old db
+
+base = pymssql.connect(server, username, password, database)
+
+cursor = base.cursor()
+cursor.execute('''
+               IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'users' AND TABLE_SCHEMA = 'dbo')
+               BEGIN
+                   CREATE TABLE users(userId BIGINT PRIMARY KEY, username TEXT, firstname TEXT, lastname TEXT, insertDateTime datetime DEFAULT GETUTCDATE())
+               END;
+               ''')
 base.commit()
+
+cursor.execute('''
+               IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'casinoLogs' AND TABLE_SCHEMA = 'dbo')
+               BEGIN
+                   CREATE TABLE casinoLogs (logId BIGINT  IDENTITY(1,1) PRIMARY KEY, userId BIGINT, rival BIGINT, state SMALLINT, insertDateTime datetime DEFAULT GETUTCDATE()) -- 0 loose, 1 win, 2 draw'
+               END;
+               ''')
+base.commit()
+
+query = "SELECT userId, username, firstName, lastName FROM users"
+
+cursor.execute(query)
+
+rows = cursor.fetchall()
+
+
+users = {
+        int(row[0]): {
+            "username": str(row[1]),
+            "firstname": str(row[2]),
+            "lastname": str(row[3]),
+            "displayName": f"@{str(row[1])}" if str(row[1]) else f"{str(row[2])} {str(row[3])}"
+        }
+        for row in rows
+    }
 
 
 l = []
@@ -336,7 +381,7 @@ async def roulette(message: types.Message):
     logs = cur.execute('SELECT logs FROM users WHERE username == ?', (winner[1:],)).fetchone()[0]
     logs += f"Победа в рулетке над {looser[1:]} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
     cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, winner[1:]))
-    base.commit()
+    base2.commit()
 
     loose = cur.execute('SELECT loose FROM users WHERE username == ?', (looser[1:],)).fetchone()[0]
     loose += 1
@@ -344,7 +389,7 @@ async def roulette(message: types.Message):
     logs = cur.execute('SELECT logs FROM users WHERE username == ?', (looser[1:],)).fetchone()[0]
     logs += f"Поражение в рулетке от {winner[1:]} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
     cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, looser[1:]))
-    base.commit()
+    base2.commit()
 
     await asyncio.sleep(60)
     active = False
@@ -387,121 +432,127 @@ async def n(callback: types.CallbackQuery):
 
 @router.message(Command('mystats'))
 async def stats(message: types.Message):
-    user = message.from_user.username
+    userId = message.from_user.id
     try:
-        stats = cur.execute('SELECT * FROM users WHERE username == ?',(message.from_user.username,)).fetchone()
-        username = stats[0]
-        # text = '--' * len(username)
-        text = '[Победы:Поражения:Ничьи]\n'
-        text += str(stats[0]) + ': '
-        for i in stats[1:4]:
-            text += str(i) + ':'
-        text = text[:-1]
-        text += '\n'
-        for i in stats[4:]:
-            text += i + '\n'
+        cursor.execute('SELECT userId, rival, state, insertDateTime FROM casinoLogs WHERE userId = %s', (userId))
+        rows = cursor.fetchall()
+
+        if len(rows) == 0:
+            await message.answer('У вас ничего нет!')
+
+        loose = 0
+        win = 0
+        draw = 0
+        recordsText = ""
+        recordedLogs = 0
+        for row in rows:
+            result = int(row[2])
+            resultMessage = ""
+            if result == 0:
+                loose += 1
+                resultMessage = "Поражение от "
+
+            if result == 1:
+                win += 1
+                resultMessage = "Победа над "
+            if result == 2:
+                draw += 1
+                resultMessage = "Ничья с "
+
+            if recordedLogs < 10:
+                recordsText += f'{resultMessage} {users[int(row[1])]["displayName"]} {str(row[3])}\n'
+                recordedLogs += 1
+        text = ' Имя / Победы / Поражения / Ничьи\n'
+        text += f'{users[userId]["displayName"]} / {win} / {loose} / {draw}\n{recordsText}'
         await message.answer(text)
-    except:
+    except Exception as e:
+        print(f"Exception during mystats {str(e)}")
         await message.answer('У вас ничего нет!')
 
 
 @router.message(Command('stats'))
 async def stats(message: types.Message):
+    stats = []
     try:
-        stats = cur.execute('SELECT * FROM users').fetchall()
-    except:
+        cursor.execute('''
+                            SELECT 
+                               userId,
+                               SUM(CASE WHEN state = 1 THEN 1 ELSE 0 END) AS win,
+                               SUM(CASE WHEN state = 0 THEN 1 ELSE 0 END) AS loose,
+                               SUM(CASE WHEN state = 2 THEN 1 ELSE 0 END) AS draw
+                             FROM casinoLogs group by userId
+                            ''')
+        stats = cursor.fetchall()
+    except Exception as e:
+        print(f"Exception during mystats {str(e)}")
         pass
-    # usernames = cur.execute('SELECT username FROM users').fetchall()
-    # usernames = [i[0] for i in usernames]
-    # text = '--' * len(max(usernames, key=len))
-    text = '[Победы:Поражения:Ничьи]\n'
-    for i in stats:
-        # username = i[0] + ' ' + '-' * (len(max(usernames, key=len)) - len(i[0])) + '---------' + ' '
-        text += i[0] + ': '
-        for j in i[1:4]:
-            text += str(j) + ':'
-        text = text[:-1]
-        text += '\n'
+    text = ' Имя / Победы / Поражения / Ничьи\n'
+    for row in stats:
+        displayName = users[int(row[0])]["displayName"]
+        text += displayName + " / "
+        text += f'{row[1]} / {row[2]} / {row[3]}\n'
     await message.answer(text)
+
 
 
 @router.message(Command('duel'))
 async def duel(message: types.Message):
-    try:
-        user = message.from_user.id
-        cur.execute('INSERT INTO users (username, win, loose, draw, logs) VALUES(?,?,?,?,?)', (message.from_user.username, 0, 0, 0, ''))
-        base.commit()
-    except:
-        pass # user already recorded
-    kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Стреляться!', callback_data='s')).as_markup()
+    fromUser = message.from_user
+    if not fromUser.id in users:
+        try:
+            cursor.execute('INSERT INTO users (userId, username, firstname, lastname) VALUES(%s,%s,%s,%s)', (fromUser.id, fromUser.username, fromUser.first_name, fromUser.last_name))
+            users[fromUser.id] = {
+            "username": fromUser.username,
+            "firstname": fromUser.first_name,
+            "lastname": fromUser.last_name,
+            "displayName": f"@{fromUser.username}" if fromUser.username else f"{fromUser.first_name} {fromUser.last_name}"
+        }
+            base.commit()
+        except:
+            base.rollback()
+            pass
+    kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Стреляться!', callback_data=f's|{message.from_user.id}')).as_markup()
     await message.answer(f'@{message.from_user.username} вызывает на дуэль!\n\nПравила дуэли: проигравший дарит победителю гифт. Не участвуйте в дуэлях, если не сможете подарить гифт, иначе будете чушпанами!', reply_markup=kb)
 
 
-@router.callback_query(F.data == 's')
+@router.callback_query(lambda query: query.data.startswith('s|'))
 async def d(callback: types.CallbackQuery):
-    duelist = callback.message.text.split(' ')[0][1:]
-    try:
-        cur.execute('INSERT INTO users (username, win, loose, draw, logs) VALUES(?,?,?,?,?)', (callback.from_user.username, 0, 0, 0, ''))
-    except:
-        pass
-    base.commit()
+    duelist = int(callback.data.split('|')[1])
+    fromUser = callback.from_user
+    if duelist == fromUser.id:
+        await bot.edit_message_text(text=f'{users[duelist]["displayName"]} передумал стреляться и сбежал!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
+        return
+    if not fromUser.id in users:
+        try:
+            cursor.execute('INSERT INTO users (userId, username, firstname, lastname) VALUES(%s,%s,%s,%s)', (fromUser.id, fromUser.username, fromUser.first_name, fromUser.last_name))
+            users[fromUser.id] = {
+            "username": fromUser.username,
+            "firstname": fromUser.first_name,
+            "lastname": fromUser.last_name,
+            "displayName": f"@{fromUser.username}" if fromUser.username else f"{fromUser.first_name} {fromUser.last_name}"
+            }
+            base.commit()
+        except:
+            base.rollback()
+            pass
     r = random.randint(1,3)
     match r:
         case 1:
-            await bot.edit_message_text(text=f'@{duelist} пристрелил @{callback.from_user.username} и заслужил от него гифт!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
-
-            win = cur.execute('SELECT win FROM users WHERE username == ?', (duelist,)).fetchone()[0]
-            win += 1
-            cur.execute('UPDATE users SET win == ? WHERE username == ?', (win, duelist))
-            logs = cur.execute('SELECT logs FROM users WHERE username == ?', (duelist,)).fetchone()[0]
-            logs += f"Победа над {callback.from_user.username} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
-            cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, duelist))
-            base.commit()
-
-            loose = cur.execute('SELECT loose FROM users WHERE username == ?', (callback.from_user.username,)).fetchone()[0]
-            loose += 1
-            cur.execute('UPDATE users SET loose == ? WHERE username == ?', (loose, callback.from_user.username))
-            logs = cur.execute('SELECT logs FROM users WHERE username == ?', (callback.from_user.username,)).fetchone()[0]
-            logs += f"Поражение от {duelist} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
-            cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, callback.from_user.username))
+            await bot.edit_message_text(text=f'{users[duelist]["displayName"]} пристрелил {users[callback.from_user.id]["displayName"]} и заслужил от него гифт!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
+            cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (duelist, fromUser.id, 1))
+            cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (fromUser.id, duelist, 0))
             base.commit()
 
         case 2:
-            await bot.edit_message_text(text=f'@{callback.from_user.username} поставил раком @{duelist} и вправе требовать от него подарок!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
-
-            win = cur.execute('SELECT win FROM users WHERE username == ?', (callback.from_user.username,)).fetchone()[0]
-            win += 1
-            cur.execute('UPDATE users SET win == ? WHERE username == ?', (win, callback.from_user.username))
-            logs = cur.execute('SELECT logs FROM users WHERE username == ?', (callback.from_user.username,)).fetchone()[0]
-            logs += f"Победа над {duelist} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
-            cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, callback.from_user.username))
-            base.commit()
-
-            loose = cur.execute('SELECT loose FROM users WHERE username == ?', (duelist,)).fetchone()[0]
-            loose += 1
-            cur.execute('UPDATE users SET loose == ? WHERE username == ?', (loose, duelist))
-            logs = cur.execute('SELECT logs FROM users WHERE username == ?', (duelist,)).fetchone()[0]
-            logs += f"Поражение от {callback.from_user.username} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
-            cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, duelist))
+            await bot.edit_message_text(text=f'{users[callback.from_user.id]["displayName"]} поставил раком {users[duelist]["displayName"]} и вправе требовать от него подарок!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
+            cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (fromUser.id, duelist, 1))
+            cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (duelist, fromUser.id, 0))
             base.commit()
 
         case 3:
-            await bot.edit_message_text(text=f'@{callback.from_user.username} и @{duelist} убили друг друга и находятся в паритете!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
-
-            draw = cur.execute('SELECT draw FROM users WHERE username == ?', (callback.from_user.username,)).fetchone()[0]
-            draw += 1
-            cur.execute('UPDATE users SET draw == ? WHERE username == ?', (draw, callback.from_user.username))
-            logs = cur.execute('SELECT logs FROM users WHERE username == ?', (callback.from_user.username,)).fetchone()[0]
-            logs += f"Ничья с {duelist} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
-            cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, callback.from_user.username))
-            base.commit()
-
-            draw = cur.execute('SELECT draw FROM users WHERE username == ?', (duelist,)).fetchone()[0]
-            draw += 1
-            cur.execute('UPDATE users SET draw == ? WHERE username == ?', (draw, duelist))
-            logs = cur.execute('SELECT logs FROM users WHERE username == ?', (duelist,)).fetchone()[0]
-            logs += f"Ничья с {callback.from_user.username} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
-            cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, duelist))
+            await bot.edit_message_text(text=f'{users[callback.from_user.id]["displayName"]} и {users[duelist]["displayName"]} убили друг друга и находятся в паритете!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
+            cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (fromUser.id, duelist, 2))
+            cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (duelist, fromUser.id, 2))
             base.commit()
 
     await callback.answer()
@@ -745,6 +796,7 @@ def pirozhok_dnya():
     else:
         return first_name, username
 
+
 def gay_dnya():
     file = open('gay.txt', 'r', encoding="utf-8")
     file.seek(0)
@@ -769,6 +821,7 @@ def gay_dnya():
         return first_name, username
     else:
         return first_name, username
+
 
 @router.message(F.text.lower().contains('гей дня'))
 async def gdn(message: types.Message):
@@ -830,7 +883,8 @@ async def main():
     # for i in users:
     #     user = await bot.get_chat_member(-1002326046662, i)
     #     print(i, user.user.full_name)
-    # await bot.restrict_chat_member(-1002326046662, 7187106984, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=90))
+    # await bot.restrict_chat_member(-1002326046662, 7187106984, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
+
 
     await bot.delete_webhook(drop_pending_updates=True)
     await asyncio.gather(dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types()))

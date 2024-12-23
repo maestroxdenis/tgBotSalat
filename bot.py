@@ -39,31 +39,32 @@ base2.execute('CREATE TABLE IF NOT EXISTS users(username TEXT PRIMARY KEY, win I
 base2.commit()
 #old db
 
-base = pymssql.connect(server, username, password, database)
+baseInit = pymssql.connect(server, username, password, database)
 
-cursor = base.cursor()
-cursor.execute('''
+cursorInit = baseInit.cursor()
+cursorInit.execute('''
                IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'users' AND TABLE_SCHEMA = 'dbo')
                BEGIN
                    CREATE TABLE users(userId BIGINT PRIMARY KEY, username TEXT, firstname TEXT, lastname TEXT, insertDateTime datetime DEFAULT GETUTCDATE())
                END;
                ''')
-base.commit()
+baseInit.commit()
 
-cursor.execute('''
+cursorInit.execute('''
                IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'casinoLogs' AND TABLE_SCHEMA = 'dbo')
                BEGIN
                    CREATE TABLE casinoLogs (logId BIGINT  IDENTITY(1,1) PRIMARY KEY, userId BIGINT, rival BIGINT, state SMALLINT, insertDateTime datetime DEFAULT GETUTCDATE()) -- 0 loose, 1 win, 2 draw'
                END;
                ''')
-base.commit()
+baseInit.commit()
 
 query = "SELECT userId, username, firstName, lastName FROM users"
 
-cursor.execute(query)
+cursorInit.execute(query)
 
-rows = cursor.fetchall()
-
+rows = cursorInit.fetchall()
+cursorInit.close()
+baseInit.close()
 
 users = {
         int(row[0]): {
@@ -399,7 +400,7 @@ async def roulette(message: types.Message):
 async def u(callback: types.CallbackQuery):
     try:
         cur.execute('INSERT INTO users (username, win, loose, draw, logs) VALUES(?,?,?,?,?)', (callback.from_user.username, 0, 0, 0, ''))
-        base.commit()
+        base2.commit()
     except:
         pass # user already recorded
     user = callback.from_user.username
@@ -433,7 +434,11 @@ async def n(callback: types.CallbackQuery):
 @router.message(Command('mystats'))
 async def stats(message: types.Message):
     userId = message.from_user.id
+    base = None
+    cursor = None
     try:
+        base = pymssql.connect(server, username, password, database)
+        cursor = base.cursor()
         cursor.execute('SELECT userId, rival, state, insertDateTime FROM casinoLogs WHERE userId = %s', (userId))
         rows = cursor.fetchall()
 
@@ -468,12 +473,21 @@ async def stats(message: types.Message):
     except Exception as e:
         print(f"Exception during mystats {str(e)}")
         await message.answer('У вас ничего нет!')
+    finally:
+        if cursor:
+            cursor.close()
+        if base:
+            base.close()
 
 
 @router.message(Command('stats'))
 async def stats(message: types.Message):
     stats = []
+    base = None
+    cursor = None
     try:
+        base = pymssql.connect(server, username, password, database)
+        cursor = base.cursor()
         cursor.execute('''
                             SELECT 
                                userId,
@@ -486,6 +500,11 @@ async def stats(message: types.Message):
     except Exception as e:
         print(f"Exception during mystats {str(e)}")
         pass
+    finally:
+        if cursor:
+            cursor.close()
+        if base:
+            base.close()
     text = ' Имя / Победы / Поражения / Ничьи\n'
     for row in stats:
         displayName = users[int(row[0])]["displayName"]
@@ -499,7 +518,11 @@ async def stats(message: types.Message):
 async def duel(message: types.Message):
     fromUser = message.from_user
     if not fromUser.id in users:
+        base = None
+        cursor = None
         try:
+            base = pymssql.connect(server, username, password, database)
+            cursor = base.cursor()
             cursor.execute('INSERT INTO users (userId, username, firstname, lastname) VALUES(%s,%s,%s,%s)', (fromUser.id, fromUser.username, fromUser.first_name, fromUser.last_name))
             users[fromUser.id] = {
             "username": fromUser.username,
@@ -511,6 +534,11 @@ async def duel(message: types.Message):
         except:
             base.rollback()
             pass
+        finally:
+            if cursor:
+                cursor.close()
+            if base:
+                base.close()
     kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Стреляться!', callback_data=f's|{message.from_user.id}')).as_markup()
     await message.answer(f'@{message.from_user.username} вызывает на дуэль!\n\nПравила дуэли: проигравший дарит победителю гифт. Не участвуйте в дуэлях, если не сможете подарить гифт, иначе будете чушпанами!', reply_markup=kb)
 
@@ -523,7 +551,11 @@ async def d(callback: types.CallbackQuery):
         await bot.edit_message_text(text=f'{users[duelist]["displayName"]} передумал стреляться и сбежал!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
         return
     if not fromUser.id in users:
+        base = None
+        cursor = None
         try:
+            base = pymssql.connect(server, username, password, database)
+            cursor = base.cursor()
             cursor.execute('INSERT INTO users (userId, username, firstname, lastname) VALUES(%s,%s,%s,%s)', (fromUser.id, fromUser.username, fromUser.first_name, fromUser.last_name))
             users[fromUser.id] = {
             "username": fromUser.username,
@@ -535,26 +567,40 @@ async def d(callback: types.CallbackQuery):
         except:
             base.rollback()
             pass
+        finally:
+            if cursor:
+                cursor.close()
+            if base:
+                base.close()
     r = random.randint(1,3)
-    match r:
-        case 1:
-            await bot.edit_message_text(text=f'{users[duelist]["displayName"]} пристрелил {users[callback.from_user.id]["displayName"]} и заслужил от него гифт!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
-            cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (duelist, fromUser.id, 1))
-            cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (fromUser.id, duelist, 0))
-            base.commit()
+    base = None
+    cursor = None
+    try:
+        base = pymssql.connect(server, username, password, database)
+        cursor = base.cursor()
+        match r:
+            case 1:
+                await bot.edit_message_text(text=f'{users[duelist]["displayName"]} пристрелил {users[callback.from_user.id]["displayName"]} и заслужил от него гифт!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
+                cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (duelist, fromUser.id, 1))
+                cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (fromUser.id, duelist, 0))
+                base.commit()
 
-        case 2:
-            await bot.edit_message_text(text=f'{users[callback.from_user.id]["displayName"]} поставил раком {users[duelist]["displayName"]} и вправе требовать от него подарок!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
-            cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (fromUser.id, duelist, 1))
-            cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (duelist, fromUser.id, 0))
-            base.commit()
+            case 2:
+                await bot.edit_message_text(text=f'{users[callback.from_user.id]["displayName"]} поставил раком {users[duelist]["displayName"]} и вправе требовать от него подарок!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
+                cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (fromUser.id, duelist, 1))
+                cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (duelist, fromUser.id, 0))
+                base.commit()
 
-        case 3:
-            await bot.edit_message_text(text=f'{users[callback.from_user.id]["displayName"]} и {users[duelist]["displayName"]} убили друг друга и находятся в паритете!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
-            cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (fromUser.id, duelist, 2))
-            cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (duelist, fromUser.id, 2))
-            base.commit()
-
+            case 3:
+                await bot.edit_message_text(text=f'{users[callback.from_user.id]["displayName"]} и {users[duelist]["displayName"]} убили друг друга и находятся в паритете!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
+                cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (fromUser.id, duelist, 2))
+                cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (duelist, fromUser.id, 2))
+                base.commit()
+    finally:
+        if cursor:
+            cursor.close()
+        if base:
+            base.close()
     await callback.answer()
 
 

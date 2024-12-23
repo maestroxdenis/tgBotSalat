@@ -921,8 +921,8 @@ async def myaf(message: types.Message):
 
 
 @router.message(F.text.contains('ГО'))
-async def gol():
-    await bot.send_audio(-1002326046662, FSInputFile('goooool.mp3'), caption='ГООООООООООООЛ!')
+async def gol(message: types.Message):
+    await bot.send_audio(message.chat.id, FSInputFile('goooool.mp3'), caption='ГООООООООООООЛ!')
 
 
 @router.message(Command('members'))

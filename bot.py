@@ -11,12 +11,10 @@ from datetime import timedelta
 import pytz
 import pymssql
 
-
 from aiogram import Bot, Dispatcher, types, Router, F
 from aiogram.filters import Command
 from aiogram.types import FSInputFile, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
 
 # Define connection parameters
 server = 'testdbsqltgbot.database.windows.net'
@@ -24,19 +22,17 @@ database = 'testdbsqltgbot'
 username = 'tgsalat'
 password = 'salattg1!'
 
-
 bot = Bot(token='7540561391:AAH-2_dRdlpGjI34JDC5pBb-0SOCsT5My3A')
 dp = Dispatcher()
 router = Router()
 dp.include_router(router)
 
-
-#old db
+# old db
 base2 = sq.connect('stats.db')
 cur = base2.cursor()
 base2.execute('CREATE TABLE IF NOT EXISTS users(username TEXT PRIMARY KEY, win INTEGER, loose INTEGER, draw INTEGER, logs TEXT)')
 base2.commit()
-#old db
+# old db
 
 
 base = pymssql.connect(server, username, password, database)
@@ -64,17 +60,15 @@ cursor.execute(query)
 
 rows = cursor.fetchall()
 
-
 users = {
-        int(row[0]): {
-            "username": str(row[1]),
-            "firstname": str(row[2]),
-            "lastname": str(row[3]),
-            "displayName": f"@{str(row[1])}" if str(row[1]) else f"{str(row[2])} {str(row[3])}"
-        }
-        for row in rows
+    int(row[0]): {
+        "username": str(row[1]),
+        "firstname": str(row[2]),
+        "lastname": str(row[3]),
+        "displayName": f"@{str(row[1])}" if str(row[1]) else f"{str(row[2])} {str(row[3])}"
     }
-
+    for row in rows
+}
 
 l = []
 active = False
@@ -88,7 +82,7 @@ async def blackjack(message: types.Message):
             id = 673615097
             await message.answer(f'{name}, @{message.from_user.username} вызывает тебя в Блекджек!')
 
-    deck = ['2','3','4','5','6','7','8','9','10','10','10','10','11']*4
+    deck = ['2', '3', '4', '5', '6', '7', '8', '9', '10', '10', '10', '10', '11'] * 4
     c1 = random.choice(deck)
     deck.remove(c1)
     c2 = random.choice(deck)
@@ -109,10 +103,11 @@ async def blackjack(message: types.Message):
     os.remove(f'{m.message_id}.txt')
 
 
-
 """
 Переписать под двух игроков, добавить ограничение на апдейты (20 в минуту)
 """
+
+
 # @router.callback_query(F.data == 'add')
 # async def add_card(callback: types.CallbackQuery):
 #     kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Еще', callback_data='add')).add(InlineKeyboardButton(text='Хватит', callback_data='enough')).as_markup()
@@ -278,18 +273,18 @@ async def unmute(message: types.Message):
             user = await bot.get_chat_member(message.chat.id, userid)
             await message.answer(f'@{user.user.username} был помилован!')
         except:
-                file = open('users.txt', 'a+')
-                file.seek(0)
-                users = file.readlines()
-                file.close()
-                users = [x[0:-1] for x in users]
-                text = ''
-                for i in users:
-                    user = await bot.get_chat_member(message.chat.id, int(i))
-                    user_status = user.status
-                    if user_status == 'restricted':
-                        await bot.restrict_chat_member(message.chat.id, user.user.id, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
-                await message.answer('Все помилованы!')
+            file = open('users.txt', 'a+')
+            file.seek(0)
+            users = file.readlines()
+            file.close()
+            users = [x[0:-1] for x in users]
+            text = ''
+            for i in users:
+                user = await bot.get_chat_member(message.chat.id, int(i))
+                user_status = user.status
+                if user_status == 'restricted':
+                    await bot.restrict_chat_member(message.chat.id, user.user.id, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
+            await message.answer('Все помилованы!')
 
 
 @router.message(Command('mutes'))
@@ -406,7 +401,7 @@ async def u(callback: types.CallbackQuery):
         cur.execute('INSERT INTO users (username, win, loose, draw, logs) VALUES(?,?,?,?,?)', (callback.from_user.username, 0, 0, 0, ''))
         base.commit()
     except:
-        pass # user already recorded
+        pass  # user already recorded
     user = callback.from_user.username
     file = open('roulette.txt', 'a+')
     file.seek(0)
@@ -550,11 +545,11 @@ async def duel(message: types.Message):
         try:
             cursor.execute('INSERT INTO users (userId, username, firstname, lastname) VALUES(%s,%s,%s,%s)', (fromUser.id, fromUser.username, fromUser.first_name, fromUser.last_name))
             users[fromUser.id] = {
-            "username": fromUser.username,
-            "firstname": fromUser.first_name,
-            "lastname": fromUser.last_name,
-            "displayName": f"@{fromUser.username}" if fromUser.username else f"{fromUser.first_name} {fromUser.last_name}"
-        }
+                "username": fromUser.username,
+                "firstname": fromUser.first_name,
+                "lastname": fromUser.last_name,
+                "displayName": f"@{fromUser.username}" if fromUser.username else f"{fromUser.first_name} {fromUser.last_name}"
+            }
             base.commit()
         except:
             base.rollback()
@@ -574,16 +569,16 @@ async def d(callback: types.CallbackQuery):
         try:
             cursor.execute('INSERT INTO users (userId, username, firstname, lastname) VALUES(%s,%s,%s,%s)', (fromUser.id, fromUser.username, fromUser.first_name, fromUser.last_name))
             users[fromUser.id] = {
-            "username": fromUser.username,
-            "firstname": fromUser.first_name,
-            "lastname": fromUser.last_name,
-            "displayName": f"{fromUser.username}" if fromUser.username else f"{fromUser.first_name} {fromUser.last_name}"
+                "username": fromUser.username,
+                "firstname": fromUser.first_name,
+                "lastname": fromUser.last_name,
+                "displayName": f"{fromUser.username}" if fromUser.username else f"{fromUser.first_name} {fromUser.last_name}"
             }
             base.commit()
         except:
             base.rollback()
             pass
-    r = random.randint(1,3)
+    r = random.randint(1, 3)
     match r:
         case 1:
             await bot.edit_message_text(text=f'{users[duelist]["displayName"]} пристрелил {users[callback.from_user.id]["displayName"]} и заслужил от него гифт!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
@@ -632,11 +627,11 @@ async def shoot_cb(callback: types.CallbackQuery):
     user_seq = file.readlines()
     file.close()
     user_seq = [x[:-1] for x in user_seq]
-    user_dict = {x[0] : x[1] for x in [i.split(':') for i in user_seq]}
+    user_dict = {x[0]: x[1] for x in [i.split(':') for i in user_seq]}
     username2 = re.search(' @\w*', callback.message.text).group()[1:]
     userid2 = user_dict[username2]
 
-    d = {username1:userid1, username2:userid2}
+    d = {username1: userid1, username2: userid2}
 
     opponents = [username1, username2]
     dead = random.choice(opponents)
@@ -644,41 +639,40 @@ async def shoot_cb(callback: types.CallbackQuery):
 
     mute_hours_seq = [1] * 173 + [2] * 115 + [3] * 77 + [4] * 51 + [5] * 34 + [6] * 23 + [7] * 15 + [8] * 10 + [9] * 7 + [10] * 5 + [11] * 3 + [12] * 2
     mute_hours = random.choice(mute_hours_seq)
-    hours_declension = dict(sorted(list({key: 'час' for key in [1,21]}.items()) +
-                            list({key: 'часа' for key in [2,3,4,22,23,24]}.items()) +
-                            list({key: 'часов' for key in [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]}.items())))
+    hours_declension = dict(sorted(list({key: 'час' for key in [1, 21]}.items()) +
+                                   list({key: 'часа' for key in [2, 3, 4, 22, 23, 24]}.items()) +
+                                   list({key: 'часов' for key in [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]}.items())))
 
     dead_user = await bot.get_chat_member(callback.message.chat.id, int(d[dead]))
     dead_user_status = dead_user.status
     if dead_user_status == 'restricted':
         bantime = dead_user.until_date + timedelta(hours=mute_hours)
     else:
-        bantime = mute_hours
+        bantime = datetime.datetime.now() + timedelta(hours=mute_hours)
 
     await callback.message.delete_reply_markup()
     await bot.send_message(callback.message.chat.id, f'{opponents[0]} отправил {dead} в Вальгаллу на {mute_hours} {hours_declension[mute_hours]}. {dead}, Ваше последнее слово?')
     await asyncio.sleep(10)
     gif = FSInputFile('buckshot-roulette.mp4')
     await bot.send_video(callback.message.chat.id, video=gif)
-    await bot.restrict_chat_member(callback.message.chat.id, d[dead], permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(hours=bantime))
+    await bot.restrict_chat_member(callback.message.chat.id, d[dead], permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=bantime)
     await callback.answer()
 
 
 @router.callback_query(F.data == 'duelshoot')
 async def shootduel(callback: types.CallbackQuery):
-
     file = open('members.txt', 'r')
     user_seq = file.readlines()
     file.close()
     user_seq = [x[:-1] for x in user_seq]
-    user_dict = {x[0] : x[1] for x in [i.split(':') for i in user_seq]}
+    user_dict = {x[0]: x[1] for x in [i.split(':') for i in user_seq]}
     username1 = re.search('@\w*', callback.message.text).group()
     userid1 = user_dict[username1]
 
     username2 = '@' + callback.from_user.username
     userid2 = callback.from_user.id
 
-    d = {username1:userid1, username2:userid2}
+    d = {username1: userid1, username2: userid2}
 
     opponents = [username1, username2]
     dead = random.choice(opponents)
@@ -686,23 +680,23 @@ async def shootduel(callback: types.CallbackQuery):
 
     mute_hours_seq = [1] * 173 + [2] * 115 + [3] * 77 + [4] * 51 + [5] * 34 + [6] * 23 + [7] * 15 + [8] * 10 + [9] * 7 + [10] * 5 + [11] * 3 + [12] * 2
     mute_hours = random.choice(mute_hours_seq)
-    hours_declension = dict(sorted(list({key: 'час' for key in [1,21]}.items()) +
-                            list({key: 'часа' for key in [2,3,4,22,23,24]}.items()) +
-                            list({key: 'часов' for key in [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]}.items())))
+    hours_declension = dict(sorted(list({key: 'час' for key in [1, 21]}.items()) +
+                                   list({key: 'часа' for key in [2, 3, 4, 22, 23, 24]}.items()) +
+                                   list({key: 'часов' for key in [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]}.items())))
 
     dead_user = await bot.get_chat_member(callback.message.chat.id, int(d[dead]))
     dead_user_status = dead_user.status
     if dead_user_status == 'restricted':
         bantime = dead_user.until_date + timedelta(hours=mute_hours)
     else:
-        bantime = mute_hours
+        bantime = datetime.datetime.now() + timedelta(hours=mute_hours)
 
     await callback.message.delete_reply_markup()
     await bot.send_message(callback.message.chat.id, f'{opponents[0]} отправил {dead} в Вальгаллу на {mute_hours} {hours_declension[mute_hours]}. {dead}, Ваше последнее слово?')
     await asyncio.sleep(10)
     gif = FSInputFile('buckshot-roulette.mp4')
     await bot.send_video(callback.message.chat.id, video=gif)
-    await bot.restrict_chat_member(callback.message.chat.id, d[dead], permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(hours=mute_hours))
+    await bot.restrict_chat_member(callback.message.chat.id, d[dead], permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=bantime)
     await callback.answer()
 
 
@@ -715,7 +709,7 @@ async def duelshoot(message: types.Message):
     l.append(user)
 
     kb = InlineKeyboardBuilder().row(InlineKeyboardButton(text='Стрелять!', callback_data='duelshoot')).row(InlineKeyboardButton(text='Не чето не хочу пока', callback_data='bye1')).as_markup()
-    await message.answer(f'@{message.from_user.username} вызывает на дуэль! Проигравший отправится отдыхать на срок 1 до 8 часов!', reply_markup=kb)
+    await message.answer(f'@{message.from_user.username} вызывает на дуэль! Проигравший отправится отдыхать на срок 1 до 12 часов!', reply_markup=kb)
 
     await asyncio.sleep(120)
     l.remove(user)
@@ -735,7 +729,7 @@ async def shoot(message: types.Message):
     user_seq = file.readlines()
     file.close()
     user_seq = [x[:-1] for x in user_seq]
-    user_dict = {x[0] : x[1] for x in [i.split(':') for i in user_seq]}
+    user_dict = {x[0]: x[1] for x in [i.split(':') for i in user_seq]}
     username = re.search(' @\w*', message.text)
     if username != None:
         username = username.group()[1:]
@@ -745,9 +739,8 @@ async def shoot(message: types.Message):
             pass
         else:
             kb = InlineKeyboardBuilder().row(InlineKeyboardButton(text='Стрелять!', callback_data='shoot')).row(InlineKeyboardButton(text='Не чето не хочу пока', callback_data='bye')).as_markup()
-            await message.answer(f'@{user.user.username}, @{message.from_user.username} вызывает Вас на дуэль! Проигравший отправится отдыхать на срок 1 до 8 часов!', reply_markup=kb)
+            await message.answer(f'@{user.user.username}, @{message.from_user.username} вызывает Вас на дуэль! Проигравший отправится отдыхать на срок 1 до 12 часов!', reply_markup=kb)
             return
-
 
     # get members.txt from file: contains list of members.txt who whenever used command /shoot only
     file = open('users.txt', 'a+')
@@ -762,10 +755,9 @@ async def shoot(message: types.Message):
     # duration of mute in minutes
     mute_hours_seq = [1] * 173 + [2] * 115 + [3] * 77 + [4] * 51 + [5] * 34 + [6] * 23 + [7] * 15 + [8] * 10 + [9] * 7 + [10] * 5 + [11] * 3 + [12] * 2
     mute_hours = random.choice(mute_hours_seq)
-    hours_declension = dict(sorted(list({key: 'час' for key in [1,21]}.items()) +
-                            list({key: 'часа' for key in [2,3,4,22,23,24]}.items()) +
-                            list({key: 'часов' for key in [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]}.items())))
-
+    hours_declension = dict(sorted(list({key: 'час' for key in [1, 21]}.items()) +
+                                   list({key: 'часа' for key in [2, 3, 4, 22, 23, 24]}.items()) +
+                                   list({key: 'часов' for key in [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]}.items())))
 
     # russian roulette for mute [1h-24h]
     shot1 = random.randint(1, 6)
@@ -778,7 +770,6 @@ async def shoot(message: types.Message):
     else:
         await message.answer('В этот раз Вам повезло! Или нет? Как знать...')
 
-
     # russian roulette for mute [1h-24h] - miss in another member
     shot2 = random.randint(1, 24)
     if shot2 == 1:
@@ -789,7 +780,8 @@ async def shoot(message: types.Message):
         if unlucky_user_status == 'restricted':
             bantime = unlucky_user.until_date + timedelta(hours=mute_hours)
         else:
-            bantime = mute_hours
+            bantime = datetime.datetime.now() + timedelta(hours=mute_hours)
+
 
         if shot1 == 1:
             await message.answer(f'@{message.from_user.username} прошил себя насквозь и зацепил @{unlucky_username}, уложив его спать на {mute_hours} {hours_declension[mute_hours]}! @{unlucky_username}, Ваше последнее слово?')

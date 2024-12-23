@@ -1,8 +1,7 @@
 import csv
 
 from telethon.sync import TelegramClient
-from telethon.tl.functions.messages import GetDialogsRequest
-from telethon.tl.types import InputPeerEmpty
+
 
 api_id = 111111
 api_hash = '111abc'

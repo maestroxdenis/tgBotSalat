@@ -11,12 +11,10 @@ from datetime import timedelta
 import pytz
 import pymssql
 
-
 from aiogram import Bot, Dispatcher, types, Router, F
 from aiogram.filters import Command
 from aiogram.types import FSInputFile, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
 
 # Define connection parameters
 server = 'testdbsqltgbot.database.windows.net'
@@ -24,20 +22,17 @@ database = 'testdbsqltgbot'
 username = 'tgsalat'
 password = 'salattg1!'
 
-
 bot = Bot(token='7540561391:AAH-2_dRdlpGjI34JDC5pBb-0SOCsT5My3A')
 dp = Dispatcher()
 router = Router()
 dp.include_router(router)
 
-
-
-#old db
+# old db
 base2 = sq.connect('stats.db')
 cur = base2.cursor()
 base2.execute('CREATE TABLE IF NOT EXISTS users(username TEXT PRIMARY KEY, win INTEGER, loose INTEGER, draw INTEGER, logs TEXT)')
 base2.commit()
-#old db
+# old db
 
 baseInit = pymssql.connect(server, username, password, database)
 
@@ -67,15 +62,14 @@ cursorInit.close()
 baseInit.close()
 
 users = {
-        int(row[0]): {
-            "username": str(row[1]),
-            "firstname": str(row[2]),
-            "lastname": str(row[3]),
-            "displayName": f"@{str(row[1])}" if str(row[1]) else f"{str(row[2])} {str(row[3])}"
-        }
-        for row in rows
+    int(row[0]): {
+        "username": str(row[1]),
+        "firstname": str(row[2]),
+        "lastname": str(row[3]),
+        "displayName": f"@{str(row[1])}" if str(row[1]) else f"{str(row[2])} {str(row[3])}"
     }
-
+    for row in rows
+}
 
 l = []
 active = False
@@ -89,7 +83,7 @@ async def blackjack(message: types.Message):
             id = 673615097
             await message.answer(f'{name}, @{message.from_user.username} вызывает тебя в Блекджек!')
 
-    deck = ['2','3','4','5','6','7','8','9','10','10','10','10','11']*4
+    deck = ['2', '3', '4', '5', '6', '7', '8', '9', '10', '10', '10', '10', '11'] * 4
     c1 = random.choice(deck)
     deck.remove(c1)
     c2 = random.choice(deck)
@@ -110,134 +104,139 @@ async def blackjack(message: types.Message):
     os.remove(f'{m.message_id}.txt')
 
 
-@router.callback_query(F.data == 'add')
-async def add_card(callback: types.CallbackQuery):
-    kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Еще', callback_data='add')).add(InlineKeyboardButton(text='Хватит', callback_data='enough')).as_markup()
-    file = open(f'{callback.message.message_id}.txt', 'a+')
-    file.seek(0)
-    deck = file.readline()[:-1].split(' ')
-    c = file.readline()[:-1].split(' ')
-    d = file.readline()[:-1].split(' ')
-    u = file.readline()
-    if callback.from_user.id != int(u):
-        return
-    new_c = random.choice(deck)
-    deck.remove(new_c)
-    c.append(new_c)
-    file.close()
-    open(f'{callback.message.message_id}.txt', 'w').close()
-    file = open(f'{callback.message.message_id}.txt', 'a+')
-    file.write(' '.join(deck) + '\n')
-    file.write(f'{" ".join(c)}\n{" ".join(d)}' + '\n')
-    file.write(f'{str(callback.from_user.id)}')
-    file.close()
-    sum = 0
-    sum1 = 0
-    for i in d:
-        sum1 += int(i)
-    for i in c:
-        sum += int(i)
-    if sum > 21:
-        if '11' in c:
-            ind = c.index('11')
-            c.pop(ind)
-            c.insert(ind, '1')
-            open(f'{callback.message.message_id}.txt', 'w').close()
-            file = open(f'{callback.message.message_id}.txt', 'a+')
-            file.write(' '.join(deck) + '\n')
-            file.write(f'{" ".join(c)}\n{" ".join(d)}' + '\n')
-            file.write(f'{str(callback.from_user.id)}')
-            file.close()
-            sum -= 10
-            await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum}\nКарты дилера: {d[0]} XX - {d[0]}', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
-        else:
-            await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum}\nКарты дилера: {" ".join(d)} - {sum1}', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
-            # sum = 0
-            # for i in d:
-            #     sum += int(i)
-            # while (sum < 17):
-            #     new_d = random.choice(deck)
-            #     deck.remove(new_d)
-            #     d.append(new_d)
-            #     await asyncio.sleep(1.5)
-            #     await bot.edit_message_text(f'Ваши карты: {" ".join(c)}\nКарты дилера: {" ".join(d)}', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
-            #     sum += int(new_d)
-            # if sum > 21:
-            #     kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Новая игра', callback_data='newgame')).as_markup()
-            #     await bot.edit_message_text(f'Ваши карты: {" ".join(c)}\nКарты дилера: {" ".join(d)}\n\nПовезло тебе, лошара!', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
-            # else:
-            kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Новая игра', callback_data='newgame')).as_markup()
-            await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum}\nКарты дилера: {" ".join(d)} - {sum1}\n\nЛох, перебрал!', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
-    elif sum == 21:
-        kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Новая игра', callback_data='newgame')).as_markup()
-        await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum}\nКарты дилера: {" ".join(d)} - {sum1}\n\nПобеда!', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
-    else:
-        await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum}\nКарты дилера: {d[0]} XX - {d[0]}', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
-    await callback.answer()
+"""
+Переписать под двух игроков, добавить ограничение на апдейты (20 в минуту)
+"""
 
 
-@router.callback_query(F.data == 'enough')
-async def enough_cards(callback: types.CallbackQuery):
-    kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Новая игра', callback_data='newgame')).as_markup()
-    file = open(f'{callback.message.message_id}.txt', 'a+')
-    file.seek(0)
-    deck = file.readline()[:-1].split(' ')
-    c = file.readline()[:-1].split(' ')
-    d = file.readline()[:-1].split(' ')
-    u = file.readline()
-    if callback.from_user.id != int(u):
-        return
-    sum = 0
-    sum1 = 0
-    for i in c:
-        sum1 += int(i)
-    for i in d:
-        sum += int(i)
-    await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum1}\nКарты дилера: {" ".join(d)} - {sum}', None, callback.message.chat.id, callback.message.message_id)
-    while (sum < 17):
-        new_d = random.choice(deck)
-        deck.remove(new_d)
-        d.append(new_d)
-        await asyncio.sleep(1.5)
-        await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum1}\nКарты дилера: {" ".join(d)} - {sum}', None, callback.message.chat.id, callback.message.message_id)
-        sum += int(new_d)
-    if sum > 21:
-        await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum1}\nКарты дилера: {" ".join(d)} - {sum}\n\nПовезло тебе, лошара!', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
-    else:
-        if sum > sum1:
-            await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum1}\nКарты дилера: {" ".join(d)} - {sum}\n\nНедобрал, лошара!', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
-        else:
-            await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum1}\nКарты дилера: {" ".join(d)} - {sum}\n\nПовезло тебе, лошара!', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+# @router.callback_query(F.data == 'add')
+# async def add_card(callback: types.CallbackQuery):
+#     kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Еще', callback_data='add')).add(InlineKeyboardButton(text='Хватит', callback_data='enough')).as_markup()
+#     file = open(f'{callback.message.message_id}.txt', 'a+')
+#     file.seek(0)
+#     deck = file.readline()[:-1].split(' ')
+#     c = file.readline()[:-1].split(' ')
+#     d = file.readline()[:-1].split(' ')
+#     u = file.readline()
+#     if callback.from_user.id != int(u):
+#         return
+#     new_c = random.choice(deck)
+#     deck.remove(new_c)
+#     c.append(new_c)
+#     file.close()
+#     open(f'{callback.message.message_id}.txt', 'w').close()
+#     file = open(f'{callback.message.message_id}.txt', 'a+')
+#     file.write(' '.join(deck) + '\n')
+#     file.write(f'{" ".join(c)}\n{" ".join(d)}' + '\n')
+#     file.write(f'{str(callback.from_user.id)}')
+#     file.close()
+#     sum = 0
+#     sum1 = 0
+#     for i in d:
+#         sum1 += int(i)
+#     for i in c:
+#         sum += int(i)
+#     if sum > 21:
+#         if '11' in c:
+#             ind = c.index('11')
+#             c.pop(ind)
+#             c.insert(ind, '1')
+#             open(f'{callback.message.message_id}.txt', 'w').close()
+#             file = open(f'{callback.message.message_id}.txt', 'a+')
+#             file.write(' '.join(deck) + '\n')
+#             file.write(f'{" ".join(c)}\n{" ".join(d)}' + '\n')
+#             file.write(f'{str(callback.from_user.id)}')
+#             file.close()
+#             sum -= 10
+#             await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum}\nКарты дилера: {d[0]} XX - {d[0]}', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+#         else:
+#             await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum}\nКарты дилера: {" ".join(d)} - {sum1}', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+#             # sum = 0
+#             # for i in d:
+#             #     sum += int(i)
+#             # while (sum < 17):
+#             #     new_d = random.choice(deck)
+#             #     deck.remove(new_d)
+#             #     d.append(new_d)
+#             #     await asyncio.sleep(1.5)
+#             #     await bot.edit_message_text(f'Ваши карты: {" ".join(c)}\nКарты дилера: {" ".join(d)}', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+#             #     sum += int(new_d)
+#             # if sum > 21:
+#             #     kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Новая игра', callback_data='newgame')).as_markup()
+#             #     await bot.edit_message_text(f'Ваши карты: {" ".join(c)}\nКарты дилера: {" ".join(d)}\n\nПовезло тебе, лошара!', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+#             # else:
+#             kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Новая игра', callback_data='newgame')).as_markup()
+#             await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum}\nКарты дилера: {" ".join(d)} - {sum1}\n\nЛох, перебрал!', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+#     elif sum == 21:
+#         kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Новая игра', callback_data='newgame')).as_markup()
+#         await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum}\nКарты дилера: {" ".join(d)} - {sum1}\n\nПобеда!', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+#     else:
+#         await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum}\nКарты дилера: {d[0]} XX - {d[0]}', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+#     await callback.answer()
 
 
-@router.callback_query(F.data == 'newgame')
-async def newgame(callback: types.CallbackQuery):
-    file = open(f'{callback.message.message_id}.txt', 'a+')
-    file.seek(0)
-    deck = file.readline()[:-1].split(' ')
-    c = file.readline()[:-1].split(' ')
-    d = file.readline()[:-1].split(' ')
-    u = file.readline()
-    if callback.from_user.id != int(u):
-        return
-    open(f'{callback.message.message_id}.txt', 'w').close()
-    deck = ['2','3','4','5','6','7','8','9','10','10','10','10','11']*4
-    c1 = random.choice(deck)
-    deck.remove(c1)
-    c2 = random.choice(deck)
-    deck.remove(c2)
-    d1 = random.choice(deck)
-    deck.remove(d1)
-    d2 = random.choice(deck)
-    deck.remove(d2)
-    sum = int(c1) + int(c2)
-    kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Еще', callback_data='add')).add(InlineKeyboardButton(text='Хватит', callback_data='enough')).as_markup()
-    await bot.edit_message_text(f'Ваши карты: {c1} {c2} - {sum}\nКарты дилера: {d1} XX - {d1}', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
-    file = open(f'{callback.message.message_id}.txt', 'a+')
-    file.write(' '.join(deck) + '\n')
-    file.write(f'{c1} {c2}\n{d1} {d2}' + '\n')
-    file.write(f'{str(callback.from_user.id)}')
-    file.close()
+# @router.callback_query(F.data == 'enough')
+# async def enough_cards(callback: types.CallbackQuery):
+#     kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Новая игра', callback_data='newgame')).as_markup()
+#     file = open(f'{callback.message.message_id}.txt', 'a+')
+#     file.seek(0)
+#     deck = file.readline()[:-1].split(' ')
+#     c = file.readline()[:-1].split(' ')
+#     d = file.readline()[:-1].split(' ')
+#     u = file.readline()
+#     if callback.from_user.id != int(u):
+#         return
+#     sum = 0
+#     sum1 = 0
+#     for i in c:
+#         sum1 += int(i)
+#     for i in d:
+#         sum += int(i)
+#     await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum1}\nКарты дилера: {" ".join(d)} - {sum}', None, callback.message.chat.id, callback.message.message_id)
+#     while (sum < 17):
+#         new_d = random.choice(deck)
+#         deck.remove(new_d)
+#         d.append(new_d)
+#         await asyncio.sleep(1.5)
+#         await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum1}\nКарты дилера: {" ".join(d)} - {sum}', None, callback.message.chat.id, callback.message.message_id)
+#         sum += int(new_d)
+#     if sum > 21:
+#         await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum1}\nКарты дилера: {" ".join(d)} - {sum}\n\nПовезло тебе, лошара!', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+#     else:
+#         if sum > sum1:
+#             await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum1}\nКарты дилера: {" ".join(d)} - {sum}\n\nНедобрал, лошара!', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+#         else:
+#             await bot.edit_message_text(f'Ваши карты: {" ".join(c)} - {sum1}\nКарты дилера: {" ".join(d)} - {sum}\n\nПовезло тебе, лошара!', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+#
+#
+# @router.callback_query(F.data == 'newgame')
+# async def newgame(callback: types.CallbackQuery):
+#     file = open(f'{callback.message.message_id}.txt', 'a+')
+#     file.seek(0)
+#     deck = file.readline()[:-1].split(' ')
+#     c = file.readline()[:-1].split(' ')
+#     d = file.readline()[:-1].split(' ')
+#     u = file.readline()
+#     if callback.from_user.id != int(u):
+#         return
+#     open(f'{callback.message.message_id}.txt', 'w').close()
+#     deck = ['2','3','4','5','6','7','8','9','10','10','10','10','11']*4
+#     c1 = random.choice(deck)
+#     deck.remove(c1)
+#     c2 = random.choice(deck)
+#     deck.remove(c2)
+#     d1 = random.choice(deck)
+#     deck.remove(d1)
+#     d2 = random.choice(deck)
+#     deck.remove(d2)
+#     sum = int(c1) + int(c2)
+#     kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Еще', callback_data='add')).add(InlineKeyboardButton(text='Хватит', callback_data='enough')).as_markup()
+#     await bot.edit_message_text(f'Ваши карты: {c1} {c2} - {sum}\nКарты дилера: {d1} XX - {d1}', None, callback.message.chat.id, callback.message.message_id, reply_markup=kb)
+#     file = open(f'{callback.message.message_id}.txt', 'a+')
+#     file.write(' '.join(deck) + '\n')
+#     file.write(f'{c1} {c2}\n{d1} {d2}' + '\n')
+#     file.write(f'{str(callback.from_user.id)}')
+#     file.close()
 
 
 @router.message(Command('rasstrel'))
@@ -251,17 +250,17 @@ async def rasstrel(message: types.Message):
             user = await bot.get_chat_member(message.chat.id, userid)
             await message.answer(f'@{user.user.username} был расстрелян!')
         except:
-                await message.answer('ГОООООООООООООООООООООООООООООЛ')
-                file = open('users.txt', 'a+')
-                file.seek(0)
-                users = file.readlines()
-                file.close()
-                users = [x[0:-1] for x in users]
-                for i in users:
-                    user = await bot.get_chat_member(message.chat.id, int(i))
-                    status = user.status
-                    if status != 'creator' and status != 'owner' and status != 'administrator':
-                        await bot.restrict_chat_member(message.chat.id, int(i), permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=1))
+            await message.answer('ГОООООООООООООООООООООООООООООЛ')
+            file = open('users.txt', 'a+')
+            file.seek(0)
+            users = file.readlines()
+            file.close()
+            users = [x[0:-1] for x in users]
+            for i in users:
+                user = await bot.get_chat_member(message.chat.id, int(i))
+                status = user.status
+                if status != 'creator' and status != 'owner' and status != 'administrator' and user.user.id != 7187106984:
+                    await bot.restrict_chat_member(message.chat.id, int(i), permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
 
 
 @router.message(Command('unmute'))
@@ -271,22 +270,22 @@ async def unmute(message: types.Message):
     if message.from_user.id == 7187106984 or status == 'administrator' or status == 'owner' or status == 'creator':
         try:
             userid = int(re.search('\d+', message.text).group())
-            await bot.restrict_chat_member(message.chat.id, userid, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=90))
+            await bot.restrict_chat_member(message.chat.id, userid, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
             user = await bot.get_chat_member(message.chat.id, userid)
             await message.answer(f'@{user.user.username} был помилован!')
         except:
-                file = open('users.txt', 'a+')
-                file.seek(0)
-                users = file.readlines()
-                file.close()
-                users = [x[0:-1] for x in users]
-                text = ''
-                for i in users:
-                    user = await bot.get_chat_member(message.chat.id, int(i))
-                    user_status = user.status
-                    if user_status == 'restricted':
-                        await bot.restrict_chat_member(message.chat.id, user.user.id, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=90))
-                await message.answer('Все помилованы!')
+            file = open('users.txt', 'a+')
+            file.seek(0)
+            users = file.readlines()
+            file.close()
+            users = [x[0:-1] for x in users]
+            text = ''
+            for i in users:
+                user = await bot.get_chat_member(message.chat.id, int(i))
+                user_status = user.status
+                if user_status == 'restricted':
+                    await bot.restrict_chat_member(message.chat.id, user.user.id, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
+            await message.answer('Все помилованы!')
 
 
 @router.message(Command('mutes'))
@@ -360,7 +359,8 @@ async def roulette(message: types.Message):
     await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}', chat_id=-1002326046662, message_id=message_id)
     users.remove(winner)
     if len(users) == 1:
-        await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}\nЛузер: {users[0]}', chat_id=-1002326046662, message_id=message_id)
+        looser = users[0]
+        await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}\nЛузер: {looser}', chat_id=-1002326046662, message_id=message_id)
         file = open('roulette.txt', 'w')
         file.close()
         await asyncio.sleep(60)
@@ -402,7 +402,7 @@ async def u(callback: types.CallbackQuery):
         cur.execute('INSERT INTO users (username, win, loose, draw, logs) VALUES(?,?,?,?,?)', (callback.from_user.username, 0, 0, 0, ''))
         base2.commit()
     except:
-        pass # user already recorded
+        pass  # user already recorded
     user = callback.from_user.username
     file = open('roulette.txt', 'a+')
     file.seek(0)
@@ -439,7 +439,7 @@ async def stats(message: types.Message):
     try:
         base = pymssql.connect(server, username, password, database)
         cursor = base.cursor()
-        cursor.execute('SELECT userId, rival, state, insertDateTime FROM casinoLogs WHERE userId = %s', (userId))
+        cursor.execute('SELECT userId, rival, state, insertDateTime FROM casinoLogs WHERE userId = %s ORDER BY insertDateTime DESC', (userId))
         rows = cursor.fetchall()
 
         if len(rows) == 0:
@@ -455,21 +455,21 @@ async def stats(message: types.Message):
             resultMessage = ""
             if result == 0:
                 loose += 1
-                resultMessage = "Поражение от "
+                resultMessage = "Поражение от"
 
             if result == 1:
                 win += 1
-                resultMessage = "Победа над "
+                resultMessage = "Победа над"
             if result == 2:
                 draw += 1
-                resultMessage = "Ничья с "
+                resultMessage = "Ничья с"
 
-            if recordedLogs < 10:
-                recordsText += f'{resultMessage} {users[int(row[1])]["displayName"]} {str(row[3])}\n'
+            if recordedLogs < 15:
+                recordsText += f'{resultMessage} <a href="https://t.me/{users[int(row[1])]["displayName"][1:]}">{users[int(row[1])]["displayName"][1:]}</a> в {str(row[3].strftime("%H:%M:%S, %d.%m.%Y"))}\n'
                 recordedLogs += 1
         text = ' Имя / Победы / Поражения / Ничьи\n'
         text += f'{users[userId]["displayName"]} / {win} / {loose} / {draw}\n{recordsText}'
-        await message.answer(text)
+        await message.answer(text, parse_mode='HTML', disable_web_page_preview=True)
     except Exception as e:
         print(f"Exception during mystats {str(e)}")
         await message.answer('У вас ничего нет!')
@@ -478,6 +478,51 @@ async def stats(message: types.Message):
             cursor.close()
         if base:
             base.close()
+
+
+@router.message(Command('myfullstats'))
+async def myfullstats(message: types.Message):
+    userId = message.from_user.id
+    try:
+        cursor.execute('SELECT userId, rival, state, insertDateTime FROM casinoLogs WHERE userId = %s ORDER BY insertDateTime DESC', (userId))
+        rows = cursor.fetchall()
+
+        if len(rows) == 0:
+            await message.answer('У вас ничего нет!')
+
+        filename = message.from_user.username
+        file = open(f'{filename}.txt', 'w', encoding="utf-8")
+
+        loose = 0
+        win = 0
+        draw = 0
+        recordsText = []
+        for row in rows:
+            result = int(row[2])
+            resultMessage = ""
+            if result == 0:
+                loose += 1
+                resultMessage = "Поражение от"
+
+            if result == 1:
+                win += 1
+                resultMessage = "Победа над"
+            if result == 2:
+                draw += 1
+                resultMessage = "Ничья с"
+
+            recordsText.append(f'{resultMessage} {users[int(row[1])]["displayName"][1:]} в {str(row[3].strftime("%H:%M:%S, %d.%m.%Y"))}\n')
+
+        file.write('Победы / Поражения / Ничьи\n')
+        file.write(f'{win} / {loose} / {draw}\n')
+        file.writelines(recordsText)
+        file.close()
+        await bot.send_document(message.chat.id, FSInputFile(f'{filename}.txt'))
+        os.remove(f'{filename}.txt')
+
+    except Exception as e:
+        print(f"Exception during mystats {str(e)}")
+        await message.answer('У вас ничего нет!')
 
 
 @router.message(Command('stats'))
@@ -507,11 +552,9 @@ async def stats(message: types.Message):
             base.close()
     text = ' Имя / Победы / Поражения / Ничьи\n'
     for row in stats:
-        displayName = users[int(row[0])]["displayName"]
-        text += displayName + " / "
+        text += f'<a href="https://t.me/{users[int(row[0])]["displayName"][1:]}">{users[int(row[0])]["displayName"][1:]}</a>' + " / "
         text += f'{row[1]} / {row[2]} / {row[3]}\n'
-    await message.answer(text)
-
+    await message.answer(text, parse_mode='HTML', disable_web_page_preview=True)
 
 
 @router.message(Command('duel'))
@@ -525,11 +568,11 @@ async def duel(message: types.Message):
             cursor = base.cursor()
             cursor.execute('INSERT INTO users (userId, username, firstname, lastname) VALUES(%s,%s,%s,%s)', (fromUser.id, fromUser.username, fromUser.first_name, fromUser.last_name))
             users[fromUser.id] = {
-            "username": fromUser.username,
-            "firstname": fromUser.first_name,
-            "lastname": fromUser.last_name,
-            "displayName": f"@{fromUser.username}" if fromUser.username else f"{fromUser.first_name} {fromUser.last_name}"
-        }
+                "username": fromUser.username,
+                "firstname": fromUser.first_name,
+                "lastname": fromUser.last_name,
+                "displayName": f"@{fromUser.username}" if fromUser.username else f"{fromUser.first_name} {fromUser.last_name}"
+            }
             base.commit()
         except:
             base.rollback()
@@ -558,22 +601,21 @@ async def d(callback: types.CallbackQuery):
             cursor = base.cursor()
             cursor.execute('INSERT INTO users (userId, username, firstname, lastname) VALUES(%s,%s,%s,%s)', (fromUser.id, fromUser.username, fromUser.first_name, fromUser.last_name))
             users[fromUser.id] = {
-            "username": fromUser.username,
-            "firstname": fromUser.first_name,
-            "lastname": fromUser.last_name,
-            "displayName": f"@{fromUser.username}" if fromUser.username else f"{fromUser.first_name} {fromUser.last_name}"
+                "username": fromUser.username,
+                "firstname": fromUser.first_name,
+                "lastname": fromUser.last_name,
+                "displayName": f"{fromUser.username}" if fromUser.username else f"{fromUser.first_name} {fromUser.last_name}"
             }
             base.commit()
         except:
             base.rollback()
             pass
-        finally:
+finally:
             if cursor:
                 cursor.close()
             if base:
                 base.close()
-    r = random.randint(1,3)
-    base = None
+    r = random.randint(1, 3)    base = None
     cursor = None
     try:
         base = pymssql.connect(server, username, password, database)
@@ -630,11 +672,11 @@ async def shoot_cb(callback: types.CallbackQuery):
     user_seq = file.readlines()
     file.close()
     user_seq = [x[:-1] for x in user_seq]
-    user_dict = {x[0] : x[1] for x in [i.split(':') for i in user_seq]}
+    user_dict = {x[0]: x[1] for x in [i.split(':') for i in user_seq]}
     username2 = re.search(' @\w*', callback.message.text).group()[1:]
     userid2 = user_dict[username2]
 
-    d = {username1:userid1, username2:userid2}
+    d = {username1: userid1, username2: userid2}
 
     opponents = [username1, username2]
     dead = random.choice(opponents)
@@ -642,41 +684,40 @@ async def shoot_cb(callback: types.CallbackQuery):
 
     mute_hours_seq = [1] * 173 + [2] * 115 + [3] * 77 + [4] * 51 + [5] * 34 + [6] * 23 + [7] * 15 + [8] * 10 + [9] * 7 + [10] * 5 + [11] * 3 + [12] * 2
     mute_hours = random.choice(mute_hours_seq)
-    hours_declension = dict(sorted(list({key: 'час' for key in [1,21]}.items()) +
-                            list({key: 'часа' for key in [2,3,4,22,23,24]}.items()) +
-                            list({key: 'часов' for key in [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]}.items())))
+    hours_declension = dict(sorted(list({key: 'час' for key in [1, 21]}.items()) +
+                                   list({key: 'часа' for key in [2, 3, 4, 22, 23, 24]}.items()) +
+                                   list({key: 'часов' for key in [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]}.items())))
 
     dead_user = await bot.get_chat_member(callback.message.chat.id, int(d[dead]))
     dead_user_status = dead_user.status
     if dead_user_status == 'restricted':
         bantime = dead_user.until_date + timedelta(hours=mute_hours)
     else:
-        bantime = mute_hours
+        bantime = datetime.datetime.now() + timedelta(hours=mute_hours)
 
     await callback.message.delete_reply_markup()
     await bot.send_message(callback.message.chat.id, f'{opponents[0]} отправил {dead} в Вальгаллу на {mute_hours} {hours_declension[mute_hours]}. {dead}, Ваше последнее слово?')
     await asyncio.sleep(10)
     gif = FSInputFile('buckshot-roulette.mp4')
     await bot.send_video(callback.message.chat.id, video=gif)
-    await bot.restrict_chat_member(callback.message.chat.id, d[dead], permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(hours=mute_hours))
+    await bot.restrict_chat_member(callback.message.chat.id, d[dead], permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=bantime)
     await callback.answer()
 
 
 @router.callback_query(F.data == 'duelshoot')
 async def shootduel(callback: types.CallbackQuery):
-
     file = open('members.txt', 'r')
     user_seq = file.readlines()
     file.close()
     user_seq = [x[:-1] for x in user_seq]
-    user_dict = {x[0] : x[1] for x in [i.split(':') for i in user_seq]}
+    user_dict = {x[0]: x[1] for x in [i.split(':') for i in user_seq]}
     username1 = re.search('@\w*', callback.message.text).group()
     userid1 = user_dict[username1]
 
     username2 = '@' + callback.from_user.username
     userid2 = callback.from_user.id
 
-    d = {username1:userid1, username2:userid2}
+    d = {username1: userid1, username2: userid2}
 
     opponents = [username1, username2]
     dead = random.choice(opponents)
@@ -684,23 +725,23 @@ async def shootduel(callback: types.CallbackQuery):
 
     mute_hours_seq = [1] * 173 + [2] * 115 + [3] * 77 + [4] * 51 + [5] * 34 + [6] * 23 + [7] * 15 + [8] * 10 + [9] * 7 + [10] * 5 + [11] * 3 + [12] * 2
     mute_hours = random.choice(mute_hours_seq)
-    hours_declension = dict(sorted(list({key: 'час' for key in [1,21]}.items()) +
-                            list({key: 'часа' for key in [2,3,4,22,23,24]}.items()) +
-                            list({key: 'часов' for key in [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]}.items())))
+    hours_declension = dict(sorted(list({key: 'час' for key in [1, 21]}.items()) +
+                                   list({key: 'часа' for key in [2, 3, 4, 22, 23, 24]}.items()) +
+                                   list({key: 'часов' for key in [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]}.items())))
 
     dead_user = await bot.get_chat_member(callback.message.chat.id, int(d[dead]))
     dead_user_status = dead_user.status
     if dead_user_status == 'restricted':
         bantime = dead_user.until_date + timedelta(hours=mute_hours)
     else:
-        bantime = mute_hours
+        bantime = datetime.datetime.now() + timedelta(hours=mute_hours)
 
     await callback.message.delete_reply_markup()
     await bot.send_message(callback.message.chat.id, f'{opponents[0]} отправил {dead} в Вальгаллу на {mute_hours} {hours_declension[mute_hours]}. {dead}, Ваше последнее слово?')
     await asyncio.sleep(10)
     gif = FSInputFile('buckshot-roulette.mp4')
     await bot.send_video(callback.message.chat.id, video=gif)
-    await bot.restrict_chat_member(callback.message.chat.id, d[dead], permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(hours=mute_hours))
+    await bot.restrict_chat_member(callback.message.chat.id, d[dead], permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=bantime)
     await callback.answer()
 
 
@@ -713,9 +754,9 @@ async def duelshoot(message: types.Message):
     l.append(user)
 
     kb = InlineKeyboardBuilder().row(InlineKeyboardButton(text='Стрелять!', callback_data='duelshoot')).row(InlineKeyboardButton(text='Не чето не хочу пока', callback_data='bye1')).as_markup()
-    await message.answer(f'@{message.from_user.username} вызывает на дуэль! Проигравший отправится отдыхать на срок 1 до 8 часов!', reply_markup=kb)
+    await message.answer(f'@{message.from_user.username} вызывает на дуэль! Проигравший отправится отдыхать на срок 1 до 12 часов!', reply_markup=kb)
 
-    await asyncio.sleep(180)
+    await asyncio.sleep(120)
     l.remove(user)
 
 
@@ -733,7 +774,7 @@ async def shoot(message: types.Message):
     user_seq = file.readlines()
     file.close()
     user_seq = [x[:-1] for x in user_seq]
-    user_dict = {x[0] : x[1] for x in [i.split(':') for i in user_seq]}
+    user_dict = {x[0]: x[1] for x in [i.split(':') for i in user_seq]}
     username = re.search(' @\w*', message.text)
     if username != None:
         username = username.group()[1:]
@@ -743,9 +784,8 @@ async def shoot(message: types.Message):
             pass
         else:
             kb = InlineKeyboardBuilder().row(InlineKeyboardButton(text='Стрелять!', callback_data='shoot')).row(InlineKeyboardButton(text='Не чето не хочу пока', callback_data='bye')).as_markup()
-            await message.answer(f'@{user.user.username}, @{message.from_user.username} вызывает Вас на дуэль! Проигравший отправится отдыхать на срок 1 до 8 часов!', reply_markup=kb)
+            await message.answer(f'@{user.user.username}, @{message.from_user.username} вызывает Вас на дуэль! Проигравший отправится отдыхать на срок 1 до 12 часов!', reply_markup=kb)
             return
-
 
     # get members.txt from file: contains list of members.txt who whenever used command /shoot only
     file = open('users.txt', 'a+')
@@ -760,10 +800,9 @@ async def shoot(message: types.Message):
     # duration of mute in minutes
     mute_hours_seq = [1] * 173 + [2] * 115 + [3] * 77 + [4] * 51 + [5] * 34 + [6] * 23 + [7] * 15 + [8] * 10 + [9] * 7 + [10] * 5 + [11] * 3 + [12] * 2
     mute_hours = random.choice(mute_hours_seq)
-    hours_declension = dict(sorted(list({key: 'час' for key in [1,21]}.items()) +
-                            list({key: 'часа' for key in [2,3,4,22,23,24]}.items()) +
-                            list({key: 'часов' for key in [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]}.items())))
-
+    hours_declension = dict(sorted(list({key: 'час' for key in [1, 21]}.items()) +
+                                   list({key: 'часа' for key in [2, 3, 4, 22, 23, 24]}.items()) +
+                                   list({key: 'часов' for key in [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]}.items())))
 
     # russian roulette for mute [1h-24h]
     shot1 = random.randint(1, 6)
@@ -776,7 +815,6 @@ async def shoot(message: types.Message):
     else:
         await message.answer('В этот раз Вам повезло! Или нет? Как знать...')
 
-
     # russian roulette for mute [1h-24h] - miss in another member
     shot2 = random.randint(1, 24)
     if shot2 == 1:
@@ -787,7 +825,8 @@ async def shoot(message: types.Message):
         if unlucky_user_status == 'restricted':
             bantime = unlucky_user.until_date + timedelta(hours=mute_hours)
         else:
-            bantime = mute_hours
+            bantime = datetime.datetime.now() + timedelta(hours=mute_hours)
+
 
         if shot1 == 1:
             await message.answer(f'@{message.from_user.username} прошил себя насквозь и зацепил @{unlucky_username}, уложив его спать на {mute_hours} {hours_declension[mute_hours]}! @{unlucky_username}, Ваше последнее слово?')
@@ -803,18 +842,27 @@ async def shoot(message: types.Message):
             await bot.send_document(message.chat.id, gif)
             await bot.restrict_chat_member(message.chat.id, int(unlucky_user_id), permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=bantime)
 
-    await asyncio.sleep(180)
+    await asyncio.sleep(120)
     l.remove(user)
 
 
 @router.message(F.text.lower().startswith(('кто ', 'кого ', 'кому ', 'кем ', 'о ком ')), F.text.lower().endswith('?'))
 async def kto(message: types.Message):
-    file = open('all_users.txt', 'a+')
-    file.seek(0)
-    users = file.readlines()
-    users = [x[0:-1] for x in users]
-    user = random.choice(users)
-    await message.answer('@' + user + f' {message.text[4:-1].replace("мне", "тебе").replace("меня", "тебя").replace("мной", "тобой").replace("мой", "твой").replace("мою", "твою").replace("мое", "твое").replace("мои", "твои")}')
+    if message.chat.id > 0 and message.chat.id != 5163549672:
+        await bot.send_message(-1002326046662, message.text)
+        file = open('all_users.txt', 'a+')
+        file.seek(0)
+        users = file.readlines()
+        users = [x[0:-1] for x in users]
+        user = random.choice(users)
+        await bot.send_message(-1002326046662, '@' + user + f' {message.text[4:-1].replace("мне", "тебе").replace("меня", "тебя").replace("мной", "тобой").replace("мой", "твой").replace("мою", "твою").replace("мое", "твое").replace("мои", "твои")}')
+    else:
+        file = open('all_users.txt', 'a+')
+        file.seek(0)
+        users = file.readlines()
+        users = [x[0:-1] for x in users]
+        user = random.choice(users)
+        await message.answer('@' + user + f' {message.text[4:-1].replace("мне", "тебе").replace("меня", "тебя").replace("мной", "тобой").replace("мой", "твой").replace("мою", "твою").replace("мое", "твое").replace("мои", "твои")}')
 
 
 def pirozhok_dnya():
@@ -888,6 +936,13 @@ async def myaf(message: types.Message):
     await bot.send_document(message.chat.id, gif)
 
 
+# @router.message()
+# async def chaos(message: types.Message):
+#     if message.chat.id < 0 or message.chat.id == 5163549672:
+#         return
+#     await bot.send_message(-1002326046662, message.text)
+
+
 # @router.message(F.text.lower().contains('ху'))
 # async def hui(message: types.Message):
 #
@@ -902,12 +957,9 @@ async def myaf(message: types.Message):
 #     await message.answer(message.text)
 
 
-# async def gol():
-#     while True:
-#         r = random.randint(1,1)
-#         if r == 1:
-#             await bot.send_audio(-1002326046662, FSInputFile('goooool.mp3'), caption='ГООООООООООООЛ')
-#             await asyncio.sleep(1800)
+@router.message(F.text.contains('ГО'))
+async def gol(message: types.Message):
+    await bot.send_audio(message.chat.id, FSInputFile('goooool.mp3'), caption='ГООООООООООООЛ!')
 
 
 @router.message(Command('members'))
@@ -921,17 +973,7 @@ async def get_members(message: types.Message):
 
 
 async def main():
-    # file = open('users.txt', 'a+')
-    # file.seek(0)
-    # users = file.readlines()
-    # users = [x[0:-1] for x in users]
-    # file.close()
-    # for i in users:
-    #     user = await bot.get_chat_member(-1002326046662, i)
-    #     print(i, user.user.full_name)
     # await bot.restrict_chat_member(-1002326046662, 7187106984, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
-
-
     await bot.delete_webhook(drop_pending_updates=True)
     await asyncio.gather(dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types()))
 

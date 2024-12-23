@@ -15,7 +15,7 @@ from aiogram import Bot, Dispatcher, types, Router, F
 from aiogram.filters import Command
 from aiogram.types import FSInputFile, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
+from aiogram.types import User
 # Define connection parameters
 server = 'testdbsqltgbot.database.windows.net'
 database = 'testdbsqltgbot'
@@ -28,10 +28,10 @@ router = Router()
 dp.include_router(router)
 
 # old db
-base2 = sq.connect('stats.db')
-cur = base2.cursor()
-base2.execute('CREATE TABLE IF NOT EXISTS users(username TEXT PRIMARY KEY, win INTEGER, loose INTEGER, draw INTEGER, logs TEXT)')
-base2.commit()
+#base2 = sq.connect('stats.db')
+#cur = base2.cursor()
+#base2.execute('CREATE TABLE IF NOT EXISTS users(username TEXT PRIMARY KEY, win INTEGER, loose INTEGER, draw INTEGER, logs TEXT)')
+#base2.commit()
 # old db
 
 baseInit = pymssql.connect(server, username, password, database)
@@ -40,7 +40,7 @@ cursorInit = baseInit.cursor()
 cursorInit.execute('''
                IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'users' AND TABLE_SCHEMA = 'dbo')
                BEGIN
-                   CREATE TABLE users(userId BIGINT PRIMARY KEY, username TEXT, firstname TEXT, lastname TEXT, insertDateTime datetime DEFAULT GETUTCDATE())
+                   CREATE TABLE users(userId BIGINT PRIMARY KEY, username TEXT, firstname TEXT, lastname TEXT, insertDateTime datetime DEFAULT GETUTCDATE(), everShoot SMALLINT DEFAULT 0)
                END;
                ''')
 baseInit.commit()
@@ -53,7 +53,7 @@ cursorInit.execute('''
                ''')
 baseInit.commit()
 
-query = "SELECT userId, username, firstName, lastName FROM users"
+query = "SELECT userId, username, firstName, lastName, everShoot FROM users"
 
 cursorInit.execute(query)
 
@@ -66,7 +66,8 @@ users = {
         "username": str(row[1]),
         "firstname": str(row[2]),
         "lastname": str(row[3]),
-        "displayName": f"@{str(row[1])}" if str(row[1]) else f"{str(row[2])} {str(row[3])}"
+        "displayName": f"@{str(row[1])}" if str(row[1]) else f"{str(row[2])} {str(row[3])}",
+        "everShoot": bool(row[4])
     }
     for row in rows
 }
@@ -74,6 +75,30 @@ users = {
 l = []
 active = False
 
+def createUserIfNotExist(fromUser: User):
+    if not fromUser.id in users:
+        base = None
+        cursor = None
+        try:
+            base = pymssql.connect(server, username, password, database)
+            cursor = base.cursor()
+            cursor.execute('INSERT INTO users (userId, username, firstname, lastname, everShoot) VALUES(%s,%s,%s,%s,%s)', (fromUser.id, fromUser.username, fromUser.first_name, fromUser.last_name, 0))
+            users[fromUser.id] = {
+                "username": fromUser.username,
+                "firstname": fromUser.first_name,
+                "lastname": fromUser.last_name,
+                "displayName": f"@{fromUser.username}" if fromUser.username else f"{fromUser.first_name} {fromUser.last_name}",
+                "everShoot": False
+            }
+            base.commit()
+        except:
+            base.rollback()
+            pass
+        finally:
+            if cursor:
+                cursor.close()
+            if base:
+                base.close()
 
 @router.message(Command('blackjack'))
 async def blackjack(message: types.Message):
@@ -251,11 +276,6 @@ async def rasstrel(message: types.Message):
             await message.answer(f'@{user.user.username} был расстрелян!')
         except:
             await message.answer('ГОООООООООООООООООООООООООООООЛ')
-            file = open('users.txt', 'a+')
-            file.seek(0)
-            users = file.readlines()
-            file.close()
-            users = [x[0:-1] for x in users]
             for i in users:
                 user = await bot.get_chat_member(message.chat.id, int(i))
                 status = user.status
@@ -274,13 +294,7 @@ async def unmute(message: types.Message):
             user = await bot.get_chat_member(message.chat.id, userid)
             await message.answer(f'@{user.user.username} был помилован!')
         except:
-            file = open('users.txt', 'a+')
-            file.seek(0)
-            users = file.readlines()
-            file.close()
-            users = [x[0:-1] for x in users]
-            text = ''
-            for i in users:
+            for i in users.keys():
                 user = await bot.get_chat_member(message.chat.id, int(i))
                 user_status = user.status
                 if user_status == 'restricted':
@@ -290,19 +304,14 @@ async def unmute(message: types.Message):
 
 @router.message(Command('mutes'))
 async def mutes(message: types.Message):
-    file = open('users.txt', 'a+')
-    file.seek(0)
-    users = file.readlines()
-    file.close()
-    users = [x[0:-1] for x in users]
     text = ''
-    for i in users:
+    for i in users.keys():
         user = await bot.get_chat_member(message.chat.id, int(i))
         user_status = user.status
         user_id = user.user.id
         if user_status == 'restricted':
             name = user.user.username
-            if user.user.username == None: name = 'None'
+            if user.user.username == None: name = f'{user.user.first_name} {user.user.last_name}'
             text = text + name + f' [{user_id}]' ' - ' + (user.until_date + timedelta(hours=3)).strftime("%d/%m/%Y, %H:%M:%S") + '\n'
     if text == '': text = 'Все свободны! УРАААААААААААААААААА!'
     await message.answer(text)
@@ -323,6 +332,11 @@ async def roulette(message: types.Message):
         return
     else:
         active = True
+    #reset file if already exists
+    file = open('roulette.txt', 'w')
+    file.write('')
+    file.close()
+
     kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Участвую', callback_data='u')).add(InlineKeyboardButton(text='Я не приду', callback_data='n')).as_markup()
     bot_message = await message.answer('Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Победитель дарит проигравшему гифт!\n\nСтарт через 60', reply_markup=kb)
     message_id = bot_message.message_id
@@ -376,21 +390,21 @@ async def roulette(message: types.Message):
     file = open('roulette.txt', 'w')
     file.close()
 
-    win = cur.execute('SELECT win FROM users WHERE username == ?', (winner[1:],)).fetchone()[0]
-    win += 1
-    cur.execute('UPDATE users SET win == ? WHERE username == ?', (win, winner[1:]))
-    logs = cur.execute('SELECT logs FROM users WHERE username == ?', (winner[1:],)).fetchone()[0]
-    logs += f"Победа в рулетке над {looser[1:]} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
-    cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, winner[1:]))
-    base2.commit()
-
-    loose = cur.execute('SELECT loose FROM users WHERE username == ?', (looser[1:],)).fetchone()[0]
-    loose += 1
-    cur.execute('UPDATE users SET loose == ? WHERE username == ?', (loose, looser[1:]))
-    logs = cur.execute('SELECT logs FROM users WHERE username == ?', (looser[1:],)).fetchone()[0]
-    logs += f"Поражение в рулетке от {winner[1:]} - {datetime.datetime.now(tz=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%d, %H:%M:%S')}\n"
-    cur.execute('UPDATE users SET logs == ? WHERE username == ?', (logs, looser[1:]))
-    base2.commit()
+    base = None
+    cursor = None
+    try:
+        base = pymssql.connect(server, username, password, database)
+        cursor = base.cursor()
+        cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (winner.split(':')[0], looser.split(':')[0], 1))
+        cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (looser.split(':')[0], winner.split(':')[0], 0))
+        base.commit()
+    except Exception as e:
+        print(f"Exception during roulette {str(e)}")
+    finally:
+        if cursor:
+            cursor.close()
+        if base:
+            base.close()
 
     await asyncio.sleep(60)
     active = False
@@ -398,35 +412,32 @@ async def roulette(message: types.Message):
 
 @router.callback_query(F.data == 'u')
 async def u(callback: types.CallbackQuery):
-    try:
-        cur.execute('INSERT INTO users (username, win, loose, draw, logs) VALUES(?,?,?,?,?)', (callback.from_user.username, 0, 0, 0, ''))
-        base2.commit()
-    except:
-        pass  # user already recorded
-    user = callback.from_user.username
+    createUserIfNotExist(callback.from_user)
+    displayName = users[callback.from_user.id]["displayName"]
+    user = f'{callback.from_user.id}:{displayName}'
     file = open('roulette.txt', 'a+')
     file.seek(0)
-    users = file.readlines()
-    users = [x[0:-1] for x in users]
-    if '@' + str(user) not in users:
-        file.write('@' + str(user) + '\n')
-        users.append('@' + str(user))
+    rouletteUsers = file.readlines()
+    rouletteUsers = [x[0:-1] for x in rouletteUsers]
+    if user not in rouletteUsers:
+        file.write(user + '\n')
     file.close()
     await callback.answer()
 
 
 @router.callback_query(F.data == 'n')
 async def n(callback: types.CallbackQuery):
-    user = callback.from_user.username
+    displayName = users[callback.from_user.id]["displayName"]
+    user = f'{callback.from_user.id}:{displayName}'
     file = open('roulette.txt', 'a+')
     file.seek(0)
-    users = file.readlines()
-    users = [x for x in users]
-    if '@' + str(user) + '\n' in users:
-        users.remove('@' + str(user) + '\n')
+    rouletteUsers = file.readlines()
+    rouletteUsers = [x for x in rouletteUsers]
+    if user + '\n' in rouletteUsers:
+        rouletteUsers.remove(user + '\n')
     file.close()
     file = open('roulette.txt', 'w')
-    file.write(''.join(users))
+    file.write(''.join(rouletteUsers))
     file.close()
     await callback.answer()
 
@@ -483,7 +494,11 @@ async def stats(message: types.Message):
 @router.message(Command('myfullstats'))
 async def myfullstats(message: types.Message):
     userId = message.from_user.id
+    base = None
+    cursor = None
     try:
+        base = pymssql.connect(server, username, password, database)
+        cursor = base.cursor()
         cursor.execute('SELECT userId, rival, state, insertDateTime FROM casinoLogs WHERE userId = %s ORDER BY insertDateTime DESC', (userId))
         rows = cursor.fetchall()
 
@@ -523,6 +538,11 @@ async def myfullstats(message: types.Message):
     except Exception as e:
         print(f"Exception during mystats {str(e)}")
         await message.answer('У вас ничего нет!')
+    finally:
+        if cursor:
+            cursor.close()
+        if base:
+            base.close()
 
 
 @router.message(Command('stats'))
@@ -559,29 +579,7 @@ async def stats(message: types.Message):
 
 @router.message(Command('duel'))
 async def duel(message: types.Message):
-    fromUser = message.from_user
-    if not fromUser.id in users:
-        base = None
-        cursor = None
-        try:
-            base = pymssql.connect(server, username, password, database)
-            cursor = base.cursor()
-            cursor.execute('INSERT INTO users (userId, username, firstname, lastname) VALUES(%s,%s,%s,%s)', (fromUser.id, fromUser.username, fromUser.first_name, fromUser.last_name))
-            users[fromUser.id] = {
-                "username": fromUser.username,
-                "firstname": fromUser.first_name,
-                "lastname": fromUser.last_name,
-                "displayName": f"@{fromUser.username}" if fromUser.username else f"{fromUser.first_name} {fromUser.last_name}"
-            }
-            base.commit()
-        except:
-            base.rollback()
-            pass
-        finally:
-            if cursor:
-                cursor.close()
-            if base:
-                base.close()
+    createUserIfNotExist(message.from_user)
     kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Стреляться!', callback_data=f's|{message.from_user.id}')).as_markup()
     await message.answer(f'@{message.from_user.username} вызывает на дуэль!\n\nПравила дуэли: проигравший дарит победителю гифт. Не участвуйте в дуэлях, если не сможете подарить гифт, иначе будете чушпанами!', reply_markup=kb)
 
@@ -593,29 +591,9 @@ async def d(callback: types.CallbackQuery):
     if duelist == fromUser.id:
         await bot.edit_message_text(text=f'{users[duelist]["displayName"]} передумал стреляться и сбежал!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
         return
-    if not fromUser.id in users:
-        base = None
-        cursor = None
-        try:
-            base = pymssql.connect(server, username, password, database)
-            cursor = base.cursor()
-            cursor.execute('INSERT INTO users (userId, username, firstname, lastname) VALUES(%s,%s,%s,%s)', (fromUser.id, fromUser.username, fromUser.first_name, fromUser.last_name))
-            users[fromUser.id] = {
-                "username": fromUser.username,
-                "firstname": fromUser.first_name,
-                "lastname": fromUser.last_name,
-                "displayName": f"{fromUser.username}" if fromUser.username else f"{fromUser.first_name} {fromUser.last_name}"
-            }
-            base.commit()
-        except:
-            base.rollback()
-            pass
-finally:
-            if cursor:
-                cursor.close()
-            if base:
-                base.close()
-    r = random.randint(1, 3)    base = None
+    createUserIfNotExist(fromUser)
+    r = random.randint(1, 3)    
+    base = None
     cursor = None
     try:
         base = pymssql.connect(server, username, password, database)
@@ -782,10 +760,10 @@ async def shoot(message: types.Message):
             user = await bot.get_chat_member(message.chat.id, int(user_dict[username]))
         except:
             pass
-        else:
-            kb = InlineKeyboardBuilder().row(InlineKeyboardButton(text='Стрелять!', callback_data='shoot')).row(InlineKeyboardButton(text='Не чето не хочу пока', callback_data='bye')).as_markup()
-            await message.answer(f'@{user.user.username}, @{message.from_user.username} вызывает Вас на дуэль! Проигравший отправится отдыхать на срок 1 до 12 часов!', reply_markup=kb)
-            return
+    else:
+        kb = InlineKeyboardBuilder().row(InlineKeyboardButton(text='Стрелять!', callback_data='shoot')).row(InlineKeyboardButton(text='Не чето не хочу пока', callback_data='bye')).as_markup()
+        await message.answer(f'@{user.user.username}, @{message.from_user.username} вызывает Вас на дуэль! Проигравший отправится отдыхать на срок 1 до 12 часов!', reply_markup=kb)
+        return
 
     # get members.txt from file: contains list of members.txt who whenever used command /shoot only
     file = open('users.txt', 'a+')
@@ -850,19 +828,13 @@ async def shoot(message: types.Message):
 async def kto(message: types.Message):
     if message.chat.id > 0 and message.chat.id != 5163549672:
         await bot.send_message(-1002326046662, message.text)
-        file = open('all_users.txt', 'a+')
-        file.seek(0)
-        users = file.readlines()
-        users = [x[0:-1] for x in users]
-        user = random.choice(users)
-        await bot.send_message(-1002326046662, '@' + user + f' {message.text[4:-1].replace("мне", "тебе").replace("меня", "тебя").replace("мной", "тобой").replace("мой", "твой").replace("мою", "твою").replace("мое", "твое").replace("мои", "твои")}')
+        userId = random.choice(list(users.keys()))
+        user = users[userId]
+        await bot.send_message(-1002326046662, user["displayName"] + f' {message.text[4:-1].replace("мне", "тебе").replace("меня", "тебя").replace("мной", "тобой").replace("мой", "твой").replace("мою", "твою").replace("мое", "твое").replace("мои", "твои")}')
     else:
-        file = open('all_users.txt', 'a+')
-        file.seek(0)
-        users = file.readlines()
-        users = [x[0:-1] for x in users]
-        user = random.choice(users)
-        await message.answer('@' + user + f' {message.text[4:-1].replace("мне", "тебе").replace("меня", "тебя").replace("мной", "тобой").replace("мой", "твой").replace("мою", "твою").replace("мое", "твое").replace("мои", "твои")}')
+        userId = random.choice(list(users.keys()))
+        user = users[userId]
+        await message.answer(user["displayName"] + f' {message.text[4:-1].replace("мне", "тебе").replace("меня", "тебя").replace("мной", "тобой").replace("мой", "твой").replace("мою", "твою").replace("мое", "твое").replace("мои", "твои")}')
 
 
 def pirozhok_dnya():
@@ -964,11 +936,10 @@ async def gol(message: types.Message):
 
 @router.message(Command('members'))
 async def get_members(message: types.Message):
-    file = open('members.txt', 'a+')
-    file.seek(0)
-    members = file.readlines()
-    text = ''.join(members)
-    file.close()
+    text = ''
+    for id in users:
+        displayName = users[id]['displayName']
+        text += f'{displayName}:{id}\n'
     await message.answer(text)
 
 

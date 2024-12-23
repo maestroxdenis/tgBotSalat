@@ -40,7 +40,7 @@ cursorInit = baseInit.cursor()
 cursorInit.execute('''
                IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'users' AND TABLE_SCHEMA = 'dbo')
                BEGIN
-                   CREATE TABLE users(userId BIGINT PRIMARY KEY, username TEXT, firstname TEXT, lastname TEXT, insertDateTime datetime DEFAULT GETUTCDATE(), everShoot SMALLINT DEFAULT 0)
+                   CREATE TABLE users(userId BIGINT PRIMARY KEY, username TEXT DEFAULT '', firstname TEXT, lastname TEXT, insertDateTime datetime DEFAULT GETUTCDATE(), everShoot SMALLINT DEFAULT 0)
                END;
                ''')
 baseInit.commit()
@@ -66,11 +66,12 @@ users = {
         "username": str(row[1]),
         "firstname": str(row[2]),
         "lastname": str(row[3]),
-        "displayName": f"@{str(row[1])}" if str(row[1]) else f"{str(row[2])} {str(row[3])}",
+        "displayName": f"@{str(row[1])}" if row[1] != '' and row[1] != None else f"{str(row[2])} {str(row[3])}",
         "everShoot": bool(row[4])
     }
     for row in rows
 }
+
 
 l = []
 active = False

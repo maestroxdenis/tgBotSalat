@@ -848,7 +848,7 @@ def pirozhok_dnya():
     except Exception as e:
         print(f"Exception during loading pirozhok dnya {str(e)}")
         fileExists = False
-        
+
     if fileExists is False or datetime.datetime.now().date() > datetime.datetime.strptime(date, '%Y-%m-%d').date():
         file = open('pirozhok.txt', 'w', encoding="utf-8")
         userId = random.choice(list(users.keys()))
@@ -900,13 +900,13 @@ def gay_dnya():
 @router.message(F.text.lower().contains('гей дня'))
 async def gdn(message: types.Message):
     first_name, username = gay_dnya()
-    await message.answer(f'<a href="https://t.me/{username}">{first_name}</a> гей дня', parse_mode='HTML', disable_web_page_preview=True)
+    await message.answer(f'<a href="https://t.me/{username}">{username} {first_name}</a> гей дня', parse_mode='HTML', disable_web_page_preview=True)
 
 
 @router.message(F.text.lower().contains('пирожок дня'))
 async def pdn(message: types.Message):
     first_name, username = pirozhok_dnya()
-    await message.answer(f'<a href="https://t.me/{username}">{first_name}</a> пирожок дня', parse_mode='HTML', disable_web_page_preview=True)
+    await message.answer(f'<a href="https://t.me/{username}">{username} {first_name}</a> пирожок дня', parse_mode='HTML', disable_web_page_preview=True)
 
 
 @router.message(F.text.lower() == 'мяф')

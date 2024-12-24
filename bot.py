@@ -771,7 +771,7 @@ async def shoot(message: types.Message):
 
     # !!! later add check for field evershoot (and update for shoot initiator to 1)
     users_id = list(users.keys())
-
+    
     # duration of mute in minutes
     mute_hours_seq = [1] * 173 + [2] * 115 + [3] * 77 + [4] * 51 + [5] * 34 + [6] * 23 + [7] * 15 + [8] * 10 + [9] * 7 + [10] * 5 + [11] * 3 + [12] * 2
     mute_hours = random.choice(mute_hours_seq)
@@ -834,21 +834,27 @@ async def kto(message: types.Message):
 
 
 def pirozhok_dnya():
-    file = open('pirozhok.txt', 'r', encoding="utf-8")
-    file.seek(0)
-    date = file.readline()[:-1]
-    first_name = file.readline()[:-1]
-    username = file.readline()
-    file.close()
-    if datetime.datetime.now().date() > datetime.datetime.strptime(date, '%Y-%m-%d').date():
+    fileExists = True
+    first_name = None
+    username = None
+    date = None
+    try:
+        file = open('pirozhok.txt', 'r', encoding="utf-8")
+        file.seek(0)
+        date = file.readline()[:-1]
+        first_name = file.readline()[:-1]
+        username = file.readline()
+        file.close()
+    except Exception as e:
+        print(f"Exception during loading pirozhok dnya {str(e)}")
+        fileExists = False
+        
+    if fileExists is False or datetime.datetime.now().date() > datetime.datetime.strptime(date, '%Y-%m-%d').date():
         file = open('pirozhok.txt', 'w', encoding="utf-8")
-        csvfile = open('parsed_members.csv', 'r', encoding="utf-8")
-        reader = csv.reader(csvfile)
-        pirozhki = {}
-        for row in reader:
-            pirozhki[row[0]] = row[1]
-        first_name, username = random.choice(list(pirozhki.items()))
-
+        userId = random.choice(list(users.keys()))
+        user = users[userId]
+        first_name = user["firstname"]
+        username = user["username"]
         file.write(datetime.datetime.now().date().strftime('%Y-%m-%d') + '\n')
         file.write(first_name + '\n')
         file.write(username)
@@ -860,21 +866,27 @@ def pirozhok_dnya():
 
 
 def gay_dnya():
-    file = open('gay.txt', 'r', encoding="utf-8")
-    file.seek(0)
-    date = file.readline()[:-1]
-    first_name = file.readline()[:-1]
-    username = file.readline()
-    file.close()
-    if datetime.datetime.now().date() > datetime.datetime.strptime(date, '%Y-%m-%d').date():
-        file = open('gay.txt', 'w', encoding="utf-8")
-        csvfile = open('parsed_members.csv', 'r', encoding="utf-8")
-        reader = csv.reader(csvfile)
-        pirozhki = {}
-        for row in reader:
-            pirozhki[row[0]] = row[1]
-        first_name, username = random.choice(list(pirozhki.items()))
+    fileExists = True
+    first_name = None
+    username = None
+    date = None
+    try: 
+        file = open('gay.txt', 'r', encoding="utf-8")
+        file.seek(0)
+        date = file.readline()[:-1]
+        first_name = file.readline()[:-1]
+        username = file.readline()
+        file.close()
+    except Exception as e:
+        print(f"Exception during loading gay dnya {str(e)}")
+        fileExists = False
 
+    if fileExists is False or datetime.datetime.now().date() > datetime.datetime.strptime(date, '%Y-%m-%d').date():
+        file = open('gay.txt', 'w', encoding="utf-8")
+        userId = random.choice(list(users.keys()))
+        user = users[userId]
+        first_name = user["firstname"]
+        username = user["username"]
         file.write(datetime.datetime.now().date().strftime('%Y-%m-%d') + '\n')
         file.write(first_name + '\n')
         file.write(username)

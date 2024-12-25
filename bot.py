@@ -927,6 +927,27 @@ async def get_members(message: types.Message):
     await message.answer(text)
 
 
+@router.message(Command('fullstats'))
+async def fullfullstats(message: types.Message):
+    await bot.send_document(message.chat.id, FSInputFile('parsed_duels.csv'))
+
+
+@router.message(Command('myfullfullstats'))
+async def myfullfullstats(message: types.Message):
+    csvfile1 = open(f'{message.from_user.username}.csv', 'w', encoding="utf-8", newline='')
+    csvwriter = csv.writer(csvfile1)
+    csvfile2 = open('parsed_duels.csv', 'r', encoding="utf-8")
+    csvreader = csv.reader(csvfile2)
+    csvwriter.writerow(['Победитель', 'Проигравший', 'Ничья', 'Логи', 'Дата'])
+    for row in csvreader:
+        if row[0] == message.from_user.username or row[1] == message.from_user.username or message.from_user.username in row[2]:
+            csvwriter.writerow(row)
+    csvfile1.close()
+    csvfile2.close()
+    await bot.send_document(message.chat.id, FSInputFile(f'{message.from_user.username}.csv'))
+    os.remove(f'{message.from_user.username}.csv')
+
+
 async def main():
     # await bot.restrict_chat_member(-1002326046662, 7187106984, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
     await bot.delete_webhook(drop_pending_updates=True)

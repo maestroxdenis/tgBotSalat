@@ -2,6 +2,7 @@
 #pip.main(['install', 'pytz'])
 #pip.main(['install', 'pymssql'])
 #pip.main(['install', 'aiogram'])
+#from background import keep_alive #function for up in replit
 
 import csv
 import datetime
@@ -21,6 +22,9 @@ from aiogram.filters import Command
 from aiogram.types import FSInputFile, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import User
+
+#keep_alive() #run backgroud job for flask checker
+
 # Define connection parameters
 server = 'testdbsqltgbot.database.windows.net'
 database = 'testdbsqltgbot'

@@ -1,3 +1,8 @@
+#import pip
+#pip.main(['install', 'pytz'])
+#pip.main(['install', 'pymssql'])
+#pip.main(['install', 'aiogram'])
+
 import csv
 import datetime
 import os

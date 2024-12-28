@@ -817,7 +817,7 @@ async def shoot(message: types.Message):
             await bot.restrict_chat_member(message.chat.id, int(unlucky_user_id), permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=bantime)
 
     await asyncio.sleep(120)
-    l.remove(user)
+    l.remove(fromUser)
 
 
 @router.message(F.text.lower().startswith(('кто ', 'кого ', 'кому ', 'кем ', 'о ком ')), F.text.lower().endswith('?'))

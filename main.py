@@ -1,8 +1,9 @@
-#import pip
-#pip.main(['install', 'pytz'])
-#pip.main(['install', 'pymssql'])
-#pip.main(['install', 'aiogram'])
-#from background import keep_alive #function for up in replit
+import pip
+pip.main(['install', 'pytz'])
+pip.main(['install', 'psycopg2'])
+pip.main(['install', 'psycopg2-binary'])
+pip.main(['install', 'aiogram'])
+from background import keep_alive #function for up in replit
 
 import csv
 import datetime
@@ -15,7 +16,7 @@ import json
 import random
 from datetime import timedelta
 import pytz
-import pymssql
+import psycopg2
 
 from aiogram import Bot, Dispatcher, types, Router, F
 from aiogram.filters import Command
@@ -23,13 +24,14 @@ from aiogram.types import FSInputFile, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import User
 
-#keep_alive() #run backgroud job for flask checker
+keep_alive() #run backgroud job for flask checker
 
 # Define connection parameters
-server = 'testdbsqltgbot.database.windows.net'
-database = 'testdbsqltgbot'
-username = 'tgsalat'
-password = 'salattg1!'
+server = 'pg-12adbde-tgbotsalat.k.aivencloud.com'
+database = 'defaultdb'
+username = 'avnadmin'
+password = 'AVNS_eTIAZrJOAvsTtGsovPh'
+port = 21277
 
 bot = Bot(token='7540561391:AAH-2_dRdlpGjI34JDC5pBb-0SOCsT5My3A')
 dp = Dispatcher()
@@ -43,22 +45,22 @@ dp.include_router(router)
 #base2.commit()
 # old db
 
-baseInit = pymssql.connect(server, username, password, database)
+baseInit = psycopg2.connect(
+    dbname=database,
+    user=username,
+    password=password,
+    host=server,
+    port=port
+)
 
 cursorInit = baseInit.cursor()
 cursorInit.execute('''
-               IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'users' AND TABLE_SCHEMA = 'dbo')
-               BEGIN
-                   CREATE TABLE users(userId BIGINT PRIMARY KEY, username TEXT DEFAULT '', firstname TEXT, lastname TEXT, insertDateTime datetime DEFAULT GETUTCDATE(), everShoot SMALLINT DEFAULT 0)
-               END;
+CREATE TABLE IF NOT EXISTS users(userId BIGINT PRIMARY KEY, username TEXT DEFAULT '', firstname TEXT, lastname TEXT, insertDateTime TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() AT TIME ZONE 'utc'), everShoot SMALLINT DEFAULT 0);
                ''')
 baseInit.commit()
 
 cursorInit.execute('''
-               IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'casinoLogs' AND TABLE_SCHEMA = 'dbo')
-               BEGIN
-                   CREATE TABLE casinoLogs (logId BIGINT  IDENTITY(1,1) PRIMARY KEY, userId BIGINT, rival BIGINT, state SMALLINT, insertDateTime datetime DEFAULT GETUTCDATE()) -- 0 loose, 1 win, 2 draw'
-               END;
+CREATE TABLE IF NOT EXISTS casinoLogs (logId BIGSERIAL PRIMARY KEY, userId BIGINT, rival BIGINT, state SMALLINT, insertDateTime TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() AT TIME ZONE 'utc'));
                ''')
 baseInit.commit()
 
@@ -90,7 +92,7 @@ def createUserIfNotExist(fromUser: User):
         base = None
         cursor = None
         try:
-            base = pymssql.connect(server, username, password, database)
+            base = psycopg2.connect(server, username, password, database)
             cursor = base.cursor()
             cursor.execute('INSERT INTO users (userId, username, firstname, lastname, everShoot) VALUES(%s,%s,%s,%s,%s)', (fromUser.id, fromUser.username, fromUser.first_name, fromUser.last_name, 0))
             users[fromUser.id] = {
@@ -405,7 +407,7 @@ async def roulette(message: types.Message):
     base = None
     cursor = None
     try:
-        base = pymssql.connect(server, username, password, database)
+        base = psycopg2.connect(server, username, password, database)
         cursor = base.cursor()
         cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (winner.split(':')[0], looser.split(':')[0], 1))
         cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (looser.split(':')[0], winner.split(':')[0], 0))
@@ -460,7 +462,7 @@ async def stats(message: types.Message):
     base = None
     cursor = None
     try:
-        base = pymssql.connect(server, username, password, database)
+        base = psycopg2.connect(server, username, password, database)
         cursor = base.cursor()
         cursor.execute('SELECT userId, rival, state, insertDateTime FROM casinoLogs WHERE userId = %s ORDER BY insertDateTime DESC', (userId))
         rows = cursor.fetchall()
@@ -509,7 +511,7 @@ async def myfullstats(message: types.Message):
     base = None
     cursor = None
     try:
-        base = pymssql.connect(server, username, password, database)
+        base = psycopg2.connect(server, username, password, database)
         cursor = base.cursor()
         cursor.execute('SELECT userId, rival, state, insertDateTime FROM casinoLogs WHERE userId = %s ORDER BY insertDateTime DESC', (userId))
         rows = cursor.fetchall()
@@ -563,7 +565,7 @@ async def stats(message: types.Message):
     base = None
     cursor = None
     try:
-        base = pymssql.connect(server, username, password, database)
+        base = psycopg2.connect(server, username, password, database)
         cursor = base.cursor()
         cursor.execute('''
                             SELECT 
@@ -608,7 +610,7 @@ async def d(callback: types.CallbackQuery):
     base = None
     cursor = None
     try:
-        base = pymssql.connect(server, username, password, database)
+        base = psycopg2.connect(server, username, password, database)
         cursor = base.cursor()
         match r:
             case 1:

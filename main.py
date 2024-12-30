@@ -92,7 +92,7 @@ def createUserIfNotExist(fromUser: User):
         base = None
         cursor = None
         try:
-            base = psycopg2.connect(server, username, password, database)
+            base = psycopg2.connect(dbname=database,user=username,password=password,host=server,port=port)
             cursor = base.cursor()
             cursor.execute('INSERT INTO users (userId, username, firstname, lastname, everShoot) VALUES(%s,%s,%s,%s,%s)', (fromUser.id, fromUser.username, fromUser.first_name, fromUser.last_name, 0))
             users[fromUser.id] = {
@@ -407,7 +407,7 @@ async def roulette(message: types.Message):
     base = None
     cursor = None
     try:
-        base = psycopg2.connect(server, username, password, database)
+        base = psycopg2.connect(dbname=database,user=username,password=password,host=server,port=port)
         cursor = base.cursor()
         cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (winner.split(':')[0], looser.split(':')[0], 1))
         cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (looser.split(':')[0], winner.split(':')[0], 0))
@@ -462,9 +462,9 @@ async def stats(message: types.Message):
     base = None
     cursor = None
     try:
-        base = psycopg2.connect(server, username, password, database)
+        base = psycopg2.connect(dbname=database,user=username,password=password,host=server,port=port)
         cursor = base.cursor()
-        cursor.execute('SELECT userId, rival, state, insertDateTime FROM casinoLogs WHERE userId = %s ORDER BY insertDateTime DESC', (userId))
+        cursor.execute('SELECT userId, rival, state, insertDateTime FROM casinoLogs WHERE userId = %s ORDER BY insertDateTime DESC', (userId,))
         rows = cursor.fetchall()
 
         if len(rows) == 0:
@@ -511,9 +511,9 @@ async def myfullstats(message: types.Message):
     base = None
     cursor = None
     try:
-        base = psycopg2.connect(server, username, password, database)
+        base = psycopg2.connect(dbname=database,user=username,password=password,host=server,port=port)
         cursor = base.cursor()
-        cursor.execute('SELECT userId, rival, state, insertDateTime FROM casinoLogs WHERE userId = %s ORDER BY insertDateTime DESC', (userId))
+        cursor.execute('SELECT userId, rival, state, insertDateTime FROM casinoLogs WHERE userId = %s ORDER BY insertDateTime DESC', (userId,))
         rows = cursor.fetchall()
 
         if len(rows) == 0:
@@ -565,7 +565,7 @@ async def stats(message: types.Message):
     base = None
     cursor = None
     try:
-        base = psycopg2.connect(server, username, password, database)
+        base = psycopg2.connect(dbname=database,user=username,password=password,host=server,port=port)
         cursor = base.cursor()
         cursor.execute('''
                             SELECT 
@@ -610,7 +610,7 @@ async def d(callback: types.CallbackQuery):
     base = None
     cursor = None
     try:
-        base = psycopg2.connect(server, username, password, database)
+        base = psycopg2.connect(dbname=database,user=username,password=password,host=server,port=port)
         cursor = base.cursor()
         match r:
             case 1:

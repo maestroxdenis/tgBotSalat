@@ -1,3 +1,6 @@
+import pip
+pip.main(['install', 'flask'])
+
 from flask import Flask
 from flask import request
 from threading import Thread

@@ -30,16 +30,18 @@ keep_alive() #run backgroud job for flask checker
 
 # Define connection parameters
 server = 'pg-12adbde-tgbotsalat.k.aivencloud.com'
+
 #database = 'betatest' #beta test db
 database = 'defaultdb'
+#bot = Bot(token='8174792705:AAHoySirgnNaENcPZTb1WCsewJOPGRZCzDs') # beta test bot
+bot = Bot(token='7540561391:AAEIMU8brVCB6RvW8Xl5UxshCVUi0Nbty58')
+#chatId = -1002465405879 #beta test chat id
+chatId = -1002326046662
+
 username = 'avnadmin'
 password = 'AVNS_eTIAZrJOAvsTtGsovPh'
 port = 21277
 
-#bot = Bot(token='8174792705:AAHoySirgnNaENcPZTb1WCsewJOPGRZCzDs') # beta test bot
-bot = Bot(token='7540561391:AAEIMU8brVCB6RvW8Xl5UxshCVUi0Nbty58')
-#chatId = -4660598087 #beta test chat id
-chatId = -1002326046662
 dp = Dispatcher()
 router = Router()
 dp.include_router(router)
@@ -346,9 +348,10 @@ async def rasstrel(message: types.Message):
             await bot.restrict_chat_member(message.chat.id, userid, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=1))
             user = await bot.get_chat_member(message.chat.id, userid)
             createUserIfNotExist(user.user)
-            killedDisplayName = users[userid]["displayName"]
-            await message.answer(f'{killedDisplayName} был расстрелян!')
+            await message.answer(f'[{escape_md(users[userid]["firstname"])}](tg://user?id={userid}) был расстрелян\!', parse_mode='MarkdownV2')
         except:
+            if not re.match(r'^/rasstrel\s*$', message.text):
+                return
             await message.answer('ГОООООООООООООООООООООООООООООЛ')
             for i in users:
                 user = await bot.get_chat_member(message.chat.id, int(i))
@@ -366,7 +369,7 @@ async def unmute(message: types.Message):
             userid = int(re.search('\d+', message.text).group())
             await bot.restrict_chat_member(message.chat.id, userid, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
             user = await bot.get_chat_member(message.chat.id, userid)
-            await message.answer(f'@{user.user.username} был помилован!')
+            await message.answer(f'[{escape_md(users[userid]["firstname"])}](tg://user?id={userid}) был помилован\!' , parse_mode='MarkdownV2')
         except:
             for i in users.keys():
                 user = await bot.get_chat_member(message.chat.id, int(i))
@@ -384,11 +387,9 @@ async def mutes(message: types.Message):
         user_status = user.status
         user_id = user.user.id
         if user_status == 'restricted':
-            name = user.user.username
-            if user.user.username == None: name = f'{user.user.first_name} {user.user.last_name}'
-            text = text + name + f' [{user_id}]' ' - ' + (user.until_date + timedelta(hours=3)).strftime("%d/%m/%Y, %H:%M:%S") + '\n'
-    if text == '': text = 'Все свободны! УРАААААААААААААААААА!'
-    await message.answer(text)
+            text = text + f'[{escape_md(users[user_id]["firstname"])}](tg://user?id={user_id}) [{user_id}]' ' \- ' + (user.until_date + timedelta(hours=3)).strftime("%d/%m/%Y, %H:%M:%S") + '\n'
+    if text == '': text = 'Все свободны\! УРАААААААААААААААААА\!'
+    await message.answer(text, parse_mode='MarkdownV2')
 
 
 @router.message(Command('suggest'))

@@ -30,17 +30,17 @@ keep_alive() #run backgroud job for flask checker
 
 # Define connection parameters
 server = 'pg-12adbde-tgbotsalat.k.aivencloud.com'
-
-#database = 'betatest' #beta test db
-database = 'defaultdb'
-#bot = Bot(token='8174792705:AAHoySirgnNaENcPZTb1WCsewJOPGRZCzDs') # beta test bot
-bot = Bot(token='7540561391:AAEIMU8brVCB6RvW8Xl5UxshCVUi0Nbty58')
-#chatId = -1002465405879 #beta test chat id
-chatId = -1002326046662
-
-username = 'avnadmin'
+db_username = 'avnadmin'
 password = 'AVNS_eTIAZrJOAvsTtGsovPh'
 port = 21277
+
+#database = 'betatest' #beta test db
+#bot = Bot(token='8174792705:AAHoySirgnNaENcPZTb1WCsewJOPGRZCzDs') # beta test bot
+#chatId = -1002465405879 #beta test chat id
+
+database = 'defaultdb'
+bot = Bot(token='7540561391:AAEIMU8brVCB6RvW8Xl5UxshCVUi0Nbty58')
+chatId = -1002326046662
 
 dp = Dispatcher()
 router = Router()
@@ -55,7 +55,7 @@ dp.include_router(router)
 
 baseInit = psycopg2.connect(
     dbname=database,
-    user=username,
+    user=db_username,
     password=password,
     host=server,
     port=port
@@ -70,6 +70,13 @@ baseInit.commit()
 cursorInit.execute('''
 CREATE TABLE IF NOT EXISTS casinoLogs (logId BIGSERIAL PRIMARY KEY, userId BIGINT, rival BIGINT, state SMALLINT, insertDateTime TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() AT TIME ZONE 'utc'));
                ''')
+
+baseInit.commit()
+
+cursorInit.execute('''
+CREATE TABLE IF NOT EXISTS userInfos (infoId BIGSERIAL PRIMARY KEY, userId BIGINT, description TEXT, dtf TEXT, steam TEXT, insertDateTime TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() AT TIME ZONE 'utc'));
+               ''')
+
 baseInit.commit()
 
 query = "SELECT userId, username, firstName, lastName, everShoot FROM users"
@@ -91,10 +98,14 @@ users = {
     for row in rows
 }
 
+class UserInfo:
+    def __init__(self, user_id, description, dtf, steam):
+        self.user_id = user_id
+        self.description = description
+        self.dtf = dtf
+        self.steam = steam
+
 def escape_md(text):
-    """
-    Helper function to escape markdown characters.
-    """
     escape_chars = '_*[]()~`>#+-=|{}.!'
     return ''.join('\\' + char if char in escape_chars else char for char in text)
 
@@ -119,7 +130,7 @@ async def refreshUsersData():
                 base = None
                 cursor = None
                 try:
-                    base = psycopg2.connect(dbname=database,user=username,password=password,host=server,port=port)
+                    base = psycopg2.connect(dbname=database,user=db_username,password=password,host=server,port=port)
                     cursor = base.cursor()
                     cursor.execute('UPDATE users SET username = %s, firstname = %s, lastname = %s WHERE userId = %s', (selectedUser["username"], selectedUser["firstname"], selectedUser["lastname"], userId))
                     base.commit()
@@ -145,9 +156,10 @@ def createUserIfNotExist(fromUser: User):
         base = None
         cursor = None
         try:
-            base = psycopg2.connect(dbname=database,user=username,password=password,host=server,port=port)
+            base = psycopg2.connect(dbname=database,user=db_username,password=password,host=server,port=port)
             cursor = base.cursor()
             cursor.execute('INSERT INTO users (userId, username, firstname, lastname, everShoot) VALUES(%s,%s,%s,%s,%s)', (fromUser.id, fromUser.username, fromUser.first_name, fromUser.last_name, 0))
+            cursor.execute('INSERT INTO userInfos (userId, description, dtf, steam) VALUES(%s, %s,%s,%s)', (fromUser.id, None, None, None))
             users[fromUser.id] = {
                 "username": fromUser.username,
                 "firstname": fromUser.first_name,
@@ -337,6 +349,63 @@ async def blackjack(message: types.Message):
 #     file.write(f'{str(callback.from_user.id)}')
 #     file.close()
 
+@router.message(Command('who'))
+async def who(message: types.Message):
+    for entity in message.entities:
+        mentionedUser = None
+        if entity.type == 'text_mention':
+            mentionedUser = entity.user
+            createUserIfNotExist(mentionedUser)
+
+        if entity.type == 'mention':
+            try:
+                foundUserId = None
+                username = re.search(' @\w*', message.text)
+                if username is not None:
+                    username = username.group()[2:]
+                    for key, value in users.items():
+                        if value["username"] == username:
+                            foundUserId = key
+                            break
+                    mentionedUser = (await bot.get_chat_member(message.chat.id, int(foundUserId))).user
+                    createUserIfNotExist(mentionedUser)
+            except Exception as e:
+                print(f"Exception during getting who info username {str(e)}")
+
+        if mentionedUser is not None:
+            base = None
+            cursor = None
+            try:
+                base = psycopg2.connect(dbname=database,user=db_username,password=password,host=server,port=port)
+                cursor = base.cursor()
+                cursor.execute('SELECT userId, description, dtf, steam FROM userInfos WHERE userId = %s', (mentionedUser.id,))
+                rows = cursor.fetchall()
+                infoText = ""
+                firstname = users[mentionedUser.id]["firstname"]
+                if len(rows) != 0:
+                    userRow = rows[0]
+                    userInfo = UserInfo(int(userRow[0]), userRow[1], userRow[2], userRow[3])
+                    if userInfo.description is not None:
+                        infoText += f'{escape_md(userInfo.description)}\n'
+                    if userInfo.dtf is not None:
+                        infoText += f'dtf: {escape_md(userInfo.dtf)}\n'
+                    if userInfo.steam is not None:
+                        infoText += f'steam: {escape_md(userInfo.steam)}\n'
+                else:
+                    cursor.execute('INSERT INTO userInfos (userId, description, dtf, steam) VALUES(%s, %s,%s,%s)', (mentionedUser.id, None, None, None))
+                    base.commit()
+
+                if infoText == "":
+                    infoText += "Нет информации"
+                await message.reply(f'[{escape_md(firstname)}](tg://user?id={mentionedUser.id})\:\n{infoText}', parse_mode='MarkdownV2')
+            except Exception as e:
+                print(f"Exception during getting who info {str(e)}")
+            finally:
+                if cursor:
+                    cursor.close()
+                if base:
+                    base.close()
+            break
 
 @router.message(Command('rasstrel'))
 async def rasstrel(message: types.Message):
@@ -468,7 +537,7 @@ async def roulette(message: types.Message):
     base = None
     cursor = None
     try:
-        base = psycopg2.connect(dbname=database,user=username,password=password,host=server,port=port)
+        base = psycopg2.connect(dbname=database,user=db_username,password=password,host=server,port=port)
         cursor = base.cursor()
         cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (winner.split(':')[0], looser.split(':')[0], 1))
         cursor.execute('INSERT INTO casinoLogs (userId, rival, state) VALUES(%s,%s,%s)', (looser.split(':')[0], winner.split(':')[0], 0))
@@ -523,7 +592,7 @@ async def stats(message: types.Message):
     base = None
     cursor = None
     try:
-        base = psycopg2.connect(dbname=database,user=username,password=password,host=server,port=port)
+        base = psycopg2.connect(dbname=database,user=db_username,password=password,host=server,port=port)
         cursor = base.cursor()
         cursor.execute('SELECT userId, rival, state, insertDateTime FROM casinoLogs WHERE userId = %s ORDER BY insertDateTime DESC', (userId,))
         rows = cursor.fetchall()
@@ -572,7 +641,7 @@ async def myfullstats(message: types.Message):
     base = None
     cursor = None
     try:
-        base = psycopg2.connect(dbname=database,user=username,password=password,host=server,port=port)
+        base = psycopg2.connect(dbname=database,user=db_username,password=password,host=server,port=port)
         cursor = base.cursor()
         cursor.execute('SELECT userId, rival, state, insertDateTime FROM casinoLogs WHERE userId = %s ORDER BY insertDateTime DESC', (userId,))
         rows = cursor.fetchall()
@@ -626,7 +695,7 @@ async def stats(message: types.Message):
     base = None
     cursor = None
     try:
-        base = psycopg2.connect(dbname=database,user=username,password=password,host=server,port=port)
+        base = psycopg2.connect(dbname=database,user=db_username,password=password,host=server,port=port)
         cursor = base.cursor()
         cursor.execute('''
                             SELECT 
@@ -671,7 +740,7 @@ async def d(callback: types.CallbackQuery):
     base = None
     cursor = None
     try:
-        base = psycopg2.connect(dbname=database,user=username,password=password,host=server,port=port)
+        base = psycopg2.connect(dbname=database,user=db_username,password=password,host=server,port=port)
         cursor = base.cursor()
         match r:
             case 1:

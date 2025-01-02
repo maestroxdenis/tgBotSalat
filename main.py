@@ -168,7 +168,7 @@ async def send_welcome(chat_member: types.ChatMemberUpdated):
     if chat_member.new_chat_member.status == 'member':
         chatMember = chat_member.new_chat_member
         joinedUser = chatMember.user
-        if joinedUser.id != bot.id and joinedUser.is_bot == False:
+        if joinedUser.id != bot.id and joinedUser.is_bot == False and users.get(joinedUser.id) is None:
             createUserIfNotExist(joinedUser)
             await chat_member.answer(f"Привет новенький [{escape_md(joinedUser.first_name)}](tg://user?id={joinedUser.id})\! С тебя гифт\!", parse_mode='MarkdownV2')
 

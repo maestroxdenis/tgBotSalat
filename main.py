@@ -17,23 +17,29 @@ import random
 from datetime import timedelta
 import pytz
 import psycopg2
+import time
 
 from aiogram import Bot, Dispatcher, types, Router, F
 from aiogram.filters import Command
 from aiogram.types import FSInputFile, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import User
+from aiogram.types.chat_member_member import ChatMemberMember
 
 keep_alive() #run backgroud job for flask checker
 
 # Define connection parameters
 server = 'pg-12adbde-tgbotsalat.k.aivencloud.com'
+#database = 'betatest' #beta test db
 database = 'defaultdb'
 username = 'avnadmin'
 password = 'AVNS_eTIAZrJOAvsTtGsovPh'
 port = 21277
 
-bot = Bot(token='7540561391:AAH-2_dRdlpGjI34JDC5pBb-0SOCsT5My3A')
+#bot = Bot(token='8174792705:AAHoySirgnNaENcPZTb1WCsewJOPGRZCzDs') # beta test bot
+bot = Bot(token='7540561391:AAEIMU8brVCB6RvW8Xl5UxshCVUi0Nbty58')
+#chatId = -4660598087 #beta test chat id
+chatId = -1002326046662
 dp = Dispatcher()
 router = Router()
 dp.include_router(router)
@@ -74,15 +80,60 @@ baseInit.close()
 
 users = {
     int(row[0]): {
-        "username": str(row[1]),
-        "firstname": str(row[2]),
-        "lastname": str(row[3]),
+        "username": row[1],
+        "firstname": row[2],
+        "lastname": row[3],
         "displayName": f"@{str(row[1])}" if row[1] != '' and row[1] != None else f"{str(row[2])} {str(row[3])}",
         "everShoot": bool(row[4])
     }
     for row in rows
 }
 
+def escape_md(text):
+    """
+    Helper function to escape markdown characters.
+    """
+    escape_chars = '_*[]()~`>#+-=|{}.!'
+    return ''.join('\\' + char if char in escape_chars else char for char in text)
+
+async def refreshUsersData():
+    data_refresh_interval = 3  # seconds
+    for userId in users:
+        try: 
+            user = (await bot.get_chat_member(chatId, userId)).user
+            selectedUser = users[userId]
+            requireRefresh = False
+            if selectedUser["username"] != user.username:
+                selectedUser["username"] = user.username
+                requireRefresh = True
+            if selectedUser["firstname"] != user.first_name:
+                selectedUser["firstname"] = user.first_name
+                requireRefresh = True
+            if selectedUser["lastname"] != user.last_name:
+                selectedUser["lastname"] = user.last_name
+                requireRefresh = True
+        
+            if requireRefresh:
+                base = None
+                cursor = None
+                try:
+                    base = psycopg2.connect(dbname=database,user=username,password=password,host=server,port=port)
+                    cursor = base.cursor()
+                    cursor.execute('UPDATE users SET username = %s, firstname = %s, lastname = %s WHERE userId = %s', (selectedUser["username"], selectedUser["firstname"], selectedUser["lastname"], userId))
+                    base.commit()
+                except:
+                    base.rollback()
+                    pass
+                finally:
+                    if cursor:
+                        cursor.close()
+                    if base:
+                        base.close()
+        except Exception as e:
+             print(f"Exception during refresh users {str(e)}")
+        
+        time.sleep(data_refresh_interval)
+    
 
 l = []
 active = False
@@ -99,7 +150,7 @@ def createUserIfNotExist(fromUser: User):
                 "username": fromUser.username,
                 "firstname": fromUser.first_name,
                 "lastname": fromUser.last_name,
-                "displayName": f"@{fromUser.username}" if fromUser.username else f"{fromUser.first_name} {fromUser.last_name}",
+                "displayName": f"@{fromUser.first_name}" if fromUser.username else f"{fromUser.first_name} {fromUser.last_name}",
                 "everShoot": False
             }
             base.commit()
@@ -111,6 +162,15 @@ def createUserIfNotExist(fromUser: User):
                 cursor.close()
             if base:
                 base.close()
+
+@router.chat_member()
+async def send_welcome(chat_member: types.ChatMemberUpdated):
+    if chat_member.new_chat_member.status == 'member':
+        chatMember = chat_member.new_chat_member
+        joinedUser = chatMember.user
+        if joinedUser.id != bot.id and joinedUser.is_bot == False:
+            createUserIfNotExist(joinedUser)
+            await chat_member.answer(f"Привет новенький [{escape_md(joinedUser.first_name)}](tg://user?id={joinedUser.id})\! С тебя гифт\!", parse_mode='MarkdownV2')
 
 @router.message(Command('blackjack'))
 async def blackjack(message: types.Message):
@@ -361,7 +421,7 @@ async def roulette(message: types.Message):
         users = file.readlines()
         file.close()
         users = ''.join(users)
-        await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nУчастники:\n{users}\n\nСтарт через {s}', reply_markup=kb, chat_id=-1002326046662, message_id=message_id)
+        await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nУчастники:\n{users}\n\nСтарт через {s}', reply_markup=kb, chat_id=chatId, message_id=message_id)
         await asyncio.sleep(6)
         s -= 6
         if s == 0:
@@ -372,7 +432,7 @@ async def roulette(message: types.Message):
     file.close()
     users = [x[0:-1] for x in users]
     if len(users) < 2:
-        await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nНедостаточно игроков(', chat_id=-1002326046662, message_id=message_id)
+        await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nНедостаточно игроков(', chat_id=chatId, message_id=message_id)
         file = open('roulette.txt', 'w')
         file.close()
         await asyncio.sleep(60)
@@ -380,15 +440,15 @@ async def roulette(message: types.Message):
         return
     for i in range(3):
         winner = random.choice(users)
-        await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}', chat_id=-1002326046662, message_id=message_id)
+        await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}', chat_id=chatId, message_id=message_id)
         await asyncio.sleep(0.5)
-        await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: ', chat_id=-1002326046662, message_id=message_id)
+        await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: ', chat_id=chatId, message_id=message_id)
         await asyncio.sleep(0.5)
-    await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}', chat_id=-1002326046662, message_id=message_id)
+    await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}', chat_id=chatId, message_id=message_id)
     users.remove(winner)
     if len(users) == 1:
         looser = users[0]
-        await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}\nЛузер: {looser}', chat_id=-1002326046662, message_id=message_id)
+        await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}\nЛузер: {looser}', chat_id=chatId, message_id=message_id)
         file = open('roulette.txt', 'w')
         file.close()
         await asyncio.sleep(60)
@@ -396,11 +456,11 @@ async def roulette(message: types.Message):
     else:
         for i in range(3):
             looser = random.choice(users)
-            await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}\nЛузер: {looser}', chat_id=-1002326046662, message_id=message_id)
+            await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}\nЛузер: {looser}', chat_id=chatId, message_id=message_id)
             await asyncio.sleep(0.5)
-            await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}\nЛузер: ', chat_id=-1002326046662, message_id=message_id)
+            await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}\nЛузер: ', chat_id=chatId, message_id=message_id)
             await asyncio.sleep(0.5)
-    await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}\nЛузер: {looser}', chat_id=-1002326046662, message_id=message_id)
+    await bot.edit_message_text(f'Правила рулетки: после старта выбирается 1 победитель и 1 проигравший. Проигравший дарит победителю гифт!\n\nПобедитель: {winner}\nЛузер: {looser}', chat_id=chatId, message_id=message_id)
     file = open('roulette.txt', 'w')
     file.close()
 
@@ -834,27 +894,27 @@ async def shoot(message: types.Message):
 @router.message(F.text.lower().startswith(('кто ', 'кого ', 'кому ', 'кем ', 'о ком ')), F.text.lower().endswith('?'))
 async def kto(message: types.Message):
     if message.chat.id > 0 and message.chat.id != 5163549672:
-        await bot.send_message(-1002326046662, message.text)
+        await bot.send_message(chatId, message.text)
         userId = random.choice(list(users.keys()))
         user = users[userId]
-        await bot.send_message(-1002326046662, user["displayName"] + f' {message.text[4:-1].replace("мне", "тебе").replace("меня", "тебя").replace("мной", "тобой").replace("мой", "твой").replace("мою", "твою").replace("мое", "твое").replace("мои", "твои")}')
+        await bot.send_message(chatId, f'[{escape_md(user["firstname"])}](tg://user?id={userId}) {escape_md(message.text[4:-1].replace("мне", "тебе").replace("меня", "тебя").replace("мной", "тобой").replace("мой", "твой").replace("мою", "твою").replace("мое", "твое").replace("мои", "твои"))}', parse_mode='MarkdownV2')
     else:
         userId = random.choice(list(users.keys()))
         user = users[userId]
-        await message.answer(user["displayName"] + f' {message.text[4:-1].replace("мне", "тебе").replace("меня", "тебя").replace("мной", "тобой").replace("мой", "твой").replace("мою", "твою").replace("мое", "твое").replace("мои", "твои")}')
+        await message.answer(f'[{escape_md(user["firstname"])}](tg://user?id={userId}) {escape_md(message.text[4:-1].replace("мне", "тебе").replace("меня", "тебя").replace("мной", "тобой").replace("мой", "твой").replace("мою", "твою").replace("мое", "твое").replace("мои", "твои"))}', parse_mode='MarkdownV2')
 
 
 def pirozhok_dnya():
     fileExists = True
     first_name = None
-    username = None
+    userId = None
     date = None
     try:
         file = open('pirozhok.txt', 'r', encoding="utf-8")
         file.seek(0)
         date = file.readline()[:-1]
         first_name = file.readline()[:-1]
-        username = file.readline()
+        userId = int(file.readline())
         file.close()
     except Exception as e:
         print(f"Exception during loading pirozhok dnya {str(e)}")
@@ -865,28 +925,27 @@ def pirozhok_dnya():
         userId = random.choice(list(users.keys()))
         user = users[userId]
         first_name = user["firstname"]
-        username = user["username"]
         file.write(datetime.datetime.now().date().strftime('%Y-%m-%d') + '\n')
         file.write(first_name + '\n')
-        file.write(username)
+        file.write(str(userId))
         file.close()
 
-        return first_name, username
+        return first_name, userId
     else:
-        return first_name, username
+        return first_name, userId
 
 
 def gay_dnya():
     fileExists = True
     first_name = None
-    username = None
+    userId = None
     date = None
     try: 
         file = open('gay.txt', 'r', encoding="utf-8")
         file.seek(0)
         date = file.readline()[:-1]
         first_name = file.readline()[:-1]
-        username = file.readline()
+        userId = int(file.readline())
         file.close()
     except Exception as e:
         print(f"Exception during loading gay dnya {str(e)}")
@@ -897,27 +956,26 @@ def gay_dnya():
         userId = random.choice(list(users.keys()))
         user = users[userId]
         first_name = user["firstname"]
-        username = user["username"]
         file.write(datetime.datetime.now().date().strftime('%Y-%m-%d') + '\n')
         file.write(first_name + '\n')
-        file.write(username)
+        file.write(str(userId))
         file.close()
 
-        return first_name, username
+        return first_name, userId
     else:
-        return first_name, username
+        return first_name, userId
 
 
 @router.message(F.text.lower().contains('гей дня'))
 async def gdn(message: types.Message):
-    first_name, username = gay_dnya()
-    await message.answer(f'<a href="https://t.me/{username}">{username} {first_name}</a> гей дня', parse_mode='HTML', disable_web_page_preview=True)
+    first_name, userId = gay_dnya()
+    await message.answer(f'[{escape_md(first_name)}](tg://user?id={userId}) гей дня', parse_mode='MarkdownV2', disable_web_page_preview=True)
 
 
 @router.message(F.text.lower().contains('пирожок дня'))
 async def pdn(message: types.Message):
-    first_name, username = pirozhok_dnya()
-    await message.answer(f'<a href="https://t.me/{username}">{username} {first_name}</a> пирожок дня', parse_mode='HTML', disable_web_page_preview=True)
+    first_name, userId = pirozhok_dnya()
+    await message.answer(f'[{escape_md(first_name)}](tg://user?id={userId}) пирожок дня', parse_mode='MarkdownV2', disable_web_page_preview=True)
 
 
 @router.message(F.text.lower() == 'мяф')
@@ -931,7 +989,7 @@ async def myaf(message: types.Message):
 # async def chaos(message: types.Message):
 #     if message.chat.id < 0 or message.chat.id == 5163549672:
 #         return
-#     await bot.send_message(-1002326046662, message.text)
+#     await bot.send_message(chatId, message.text)
 
 
 # @router.message(F.text.lower().contains('ху'))
@@ -957,9 +1015,8 @@ async def gol(message: types.Message):
 async def get_members(message: types.Message):
     text = ''
     for id in users:
-        displayName = users[id]['displayName']
-        text += f'{displayName}:{id}\n'
-    await message.answer(text)
+        text += f'[{escape_md(users[id]["firstname"])}](tg://user?id={id}):{id}\n'
+    await message.answer(text, parse_mode='MarkdownV2')
 
 
 @router.message(Command('fullstats'))
@@ -983,10 +1040,11 @@ async def myfullfullstats(message: types.Message):
     os.remove(f'{message.from_user.username}.csv')
 
 
+
 async def main():
-    # await bot.restrict_chat_member(-1002326046662, 7187106984, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
+    # await bot.restrict_chat_member(chatId, 7187106984, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
     await bot.delete_webhook(drop_pending_updates=True)
-    await asyncio.gather(dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types()))
+    await asyncio.gather(dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types()), refreshUsersData())
 
 
 for i in glob.glob('[0-9]*.txt'):

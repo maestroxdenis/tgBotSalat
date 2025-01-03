@@ -418,7 +418,7 @@ async def rasstrel(message: types.Message):
             createUserIfNotExist(user.user)
             await message.answer(f'[{escape_md(users[userid]["firstname"])}](tg://user?id={userid}) был расстрелян\!', parse_mode='MarkdownV2')
         except:
-            if not re.match(r'^/rasstrel\s*$', message.text):
+            if not re.match(r'^/rasstrel\S*\s*$', message.text):
                 return
             await message.answer('ГОООООООООООООООООООООООООООООЛ')
             for i in users:

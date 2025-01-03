@@ -351,60 +351,79 @@ async def blackjack(message: types.Message):
 
 @router.message(Command('who'))
 async def who(message: types.Message):
-    for entity in message.entities:
-        mentionedUser = None
-        if entity.type == 'text_mention':
-            mentionedUser = entity.user
-            createUserIfNotExist(mentionedUser)
+    mentionedUser = None
 
-        if entity.type == 'mention':
-            try:
+    if len(message.entities) == 1:
+        try:
+            matched = re.match(r'^/who\S*\s(\S+)\s*$', message.text)
+            if matched is not None:
                 foundUserId = None
-                username = re.search(' @\w*', message.text)
-                if username is not None:
-                    username = username.group()[2:]
-                    for key, value in users.items():
-                        if value["username"] == username:
-                            foundUserId = key
-                            break
-                    mentionedUser = (await bot.get_chat_member(message.chat.id, int(foundUserId))).user
-            except Exception as e:
-                print(f"Exception during getting who info username {str(e)}")
+                username = str(matched.group(1)).lower()
+                for key, value in users.items():
+                    currentUserName = str(value["username"]).lower()
+                    if currentUserName == username:
+                        foundUserId = key
+                        break
+                mentionedUser = (await bot.get_chat_member(message.chat.id, int(foundUserId))).user
+        except Exception as e:
+            print(f"Exception during getting who info username without mention {str(e)}")
+    else: 
+        for entity in message.entities:
+            if entity.type == 'text_mention':
+                mentionedUser = entity.user
+                createUserIfNotExist(mentionedUser)
 
-        if mentionedUser is not None:
-            base = None
-            cursor = None
-            try:
-                base = psycopg2.connect(dbname=database,user=db_username,password=password,host=server,port=port)
-                cursor = base.cursor()
-                cursor.execute('SELECT userId, description, dtf, steam FROM userInfos WHERE userId = %s', (mentionedUser.id,))
-                rows = cursor.fetchall()
-                infoText = ""
-                firstname = users[mentionedUser.id]["firstname"]
-                if len(rows) != 0:
-                    userRow = rows[0]
-                    userInfo = UserInfo(int(userRow[0]), userRow[1], userRow[2], userRow[3])
-                    if userInfo.description is not None:
-                        infoText += f'{escape_md(userInfo.description)}\n'
-                    if userInfo.dtf is not None:
-                        infoText += f'dtf: {escape_md(userInfo.dtf)}\n'
-                    if userInfo.steam is not None:
-                        infoText += f'steam: {escape_md(userInfo.steam)}\n'
-                else:
-                    cursor.execute('INSERT INTO userInfos (userId, description, dtf, steam) VALUES(%s, %s,%s,%s)', (mentionedUser.id, None, None, None))
-                    base.commit()
+            if entity.type == 'mention':
+                try:
+                    username = re.search(' @\w*', message.text)
+                    if username is not None:
+                        foundUserId = None
+                        username = str(username.group()[2:]).lower()
+                        for key, value in users.items():
+                            currentUserName = str(value["username"]).lower()
+                            if currentUserName == username:
+                                foundUserId = key
+                                break
+                        mentionedUser = (await bot.get_chat_member(message.chat.id, int(foundUserId))).user
+                except Exception as e:
+                    print(f"Exception during getting who info username {str(e)}")
+        
+            if mentionedUser:
+                break
+    
+    if mentionedUser is not None:
+        base = None
+        cursor = None
+        try:
+            base = psycopg2.connect(dbname=database,user=db_username,password=password,host=server,port=port)
+            cursor = base.cursor()
+            cursor.execute('SELECT userId, description, dtf, steam FROM userInfos WHERE userId = %s', (mentionedUser.id,))
+            rows = cursor.fetchall()
+            infoText = ""
+            firstname = users[mentionedUser.id]["firstname"]
+            if len(rows) != 0:
+                userRow = rows[0]
+                userInfo = UserInfo(int(userRow[0]), userRow[1], userRow[2], userRow[3])
+                if userInfo.description is not None:
+                    infoText += f'{escape_md(userInfo.description)}\n'
+                if userInfo.dtf is not None:
+                    infoText += f'dtf: {escape_md(userInfo.dtf)}\n'
+                if userInfo.steam is not None:
+                    infoText += f'steam: {escape_md(userInfo.steam)}\n'
+            else:
+                cursor.execute('INSERT INTO userInfos (userId, description, dtf, steam) VALUES(%s, %s,%s,%s)', (mentionedUser.id, None, None, None))
+                base.commit()
 
-                if infoText == "":
-                    infoText += "Нет информации"
-                await message.reply(f'[{escape_md(firstname)}](tg://user?id={mentionedUser.id})\:\n{infoText}', parse_mode='MarkdownV2')
-            except Exception as e:
-                print(f"Exception during getting who info {str(e)}")
-            finally:
-                if cursor:
-                    cursor.close()
-                if base:
-                    base.close()
-            break
+            if infoText == "":
+                infoText += "Нет информации"
+            await message.reply(f'[{escape_md(firstname)}](tg://user?id={mentionedUser.id})\:\n{infoText}', parse_mode='MarkdownV2')
+        except Exception as e:
+            print(f"Exception during getting who info {str(e)}")
+        finally:
+            if cursor:
+                cursor.close()
+            if base:
+                base.close()
 
 @router.message(Command('rasstrel'))
 async def rasstrel(message: types.Message):

@@ -1078,7 +1078,7 @@ async def gol(message: types.Message):
 async def get_members(message: types.Message):
     text = ''
     for id in users:
-        text += f'[{escape_md(users[id]["firstname"])}](tg://user?id={id}):{id}\n'
+        text += f'{escape_md(users[id]["firstname"])}: {id}\n'
     await message.answer(text, parse_mode='MarkdownV2')
 
 

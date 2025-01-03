@@ -5,6 +5,7 @@ pip.main(['install', 'psycopg2-binary'])
 pip.main(['install', 'aiogram'])
 from background import keep_alive #function for up in replit
 
+from cachetools import TTLCache
 import csv
 import datetime
 import os
@@ -147,8 +148,7 @@ async def refreshUsersData():
         
         time.sleep(data_refresh_interval)
     
-
-l = []
+shootCache = TTLCache(maxsize=100, ttl=120)
 active = False
 
 def createUserIfNotExist(fromUser: User):
@@ -854,29 +854,27 @@ async def shootduel(callback: types.CallbackQuery):
 
 @router.message(Command('duelshoot'))
 async def duelshoot(message: types.Message):
-    # checking for 60 sec cooldown
+    # checking for cooldown
     user = message.from_user.id
     createUserIfNotExist(message.from_user)
-    if user in l:
+    if user in shootCache:
         return
-    l.append(user)
+    shootCache[user] = user
+
 
     kb = InlineKeyboardBuilder().row(InlineKeyboardButton(text='Стрелять!', callback_data=f'duelshoot|{user}')).row(InlineKeyboardButton(text='Не чето не хочу пока', callback_data='bye1')).as_markup()
     duelDisplayName = users[user]["displayName"]
     await message.answer(f'{duelDisplayName} вызывает на дуэль! Проигравший отправится отдыхать на срок 1 до 12 часов!', reply_markup=kb)
 
-    await asyncio.sleep(120)
-    l.remove(user)
-
-
 @router.message(Command('shoot'))
 async def shoot(message: types.Message):
     fromUser = message.from_user
-    createUserIfNotExist(fromUser)
-    # checking for 180 sec cooldown
-    if fromUser in l:
+    # checking for cooldown
+    if fromUser.id in shootCache:
         return
-    l.append(fromUser)
+    shootCache[fromUser.id] = fromUser.id
+
+    createUserIfNotExist(fromUser)
     username = re.search(' @\w*', message.text)
     userId = re.search(' \d*', message.text)
     if username != None:
@@ -893,8 +891,6 @@ async def shoot(message: types.Message):
             duelMemberDisplayName = users[user.id]["displayName"]
             kb = InlineKeyboardBuilder().row(InlineKeyboardButton(text='Стрелять!', callback_data=f'shoot|{fromUser.id}|{user.id}')).row(InlineKeyboardButton(text='Не чето не хочу пока', callback_data=f'bye')).as_markup()
             await message.answer(f'{duelMemberDisplayName}, {duelInitiatorDisplayName} вызывает Вас на дуэль! Проигравший отправится отдыхать на срок 1 до 12 часов!', reply_markup=kb)
-            await asyncio.sleep(120)
-            l.remove(fromUser)
             return
         except:
             pass
@@ -907,8 +903,6 @@ async def shoot(message: types.Message):
             duelMemberDisplayName = users[user.id]["displayName"]
             kb = InlineKeyboardBuilder().row(InlineKeyboardButton(text='Стрелять!', callback_data=f'shoot|{fromUser.id}|{user.id}')).row(InlineKeyboardButton(text='Не чето не хочу пока', callback_data=f'bye')).as_markup()
             await message.answer(f'{duelMemberDisplayName}, {duelInitiatorDisplayName} вызывает Вас на дуэль! Проигравший отправится отдыхать на срок 1 до 12 часов!', reply_markup=kb)
-            await asyncio.sleep(120)
-            l.remove(fromUser)
             return
         except:
             pass
@@ -959,10 +953,6 @@ async def shoot(message: types.Message):
             gif = FSInputFile('buckshot-roulette.mp4')
             await bot.send_document(message.chat.id, gif)
             await bot.restrict_chat_member(message.chat.id, int(unlucky_user_id), permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=bantime)
-
-    await asyncio.sleep(120)
-    l.remove(fromUser)
-
 
 @router.message(F.text.lower().startswith(('кто ', 'кого ', 'кому ', 'кем ', 'о ком ')), F.text.lower().endswith('?'))
 async def kto(message: types.Message):

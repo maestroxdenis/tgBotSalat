@@ -368,7 +368,6 @@ async def who(message: types.Message):
                             foundUserId = key
                             break
                     mentionedUser = (await bot.get_chat_member(message.chat.id, int(foundUserId))).user
-                    createUserIfNotExist(mentionedUser)
             except Exception as e:
                 print(f"Exception during getting who info username {str(e)}")
 
@@ -894,6 +893,8 @@ async def shoot(message: types.Message):
             duelMemberDisplayName = users[user.id]["displayName"]
             kb = InlineKeyboardBuilder().row(InlineKeyboardButton(text='Стрелять!', callback_data=f'shoot|{fromUser.id}|{user.id}')).row(InlineKeyboardButton(text='Не чето не хочу пока', callback_data=f'bye')).as_markup()
             await message.answer(f'{duelMemberDisplayName}, {duelInitiatorDisplayName} вызывает Вас на дуэль! Проигравший отправится отдыхать на срок 1 до 12 часов!', reply_markup=kb)
+            await asyncio.sleep(120)
+            l.remove(fromUser)
             return
         except:
             pass
@@ -906,6 +907,8 @@ async def shoot(message: types.Message):
             duelMemberDisplayName = users[user.id]["displayName"]
             kb = InlineKeyboardBuilder().row(InlineKeyboardButton(text='Стрелять!', callback_data=f'shoot|{fromUser.id}|{user.id}')).row(InlineKeyboardButton(text='Не чето не хочу пока', callback_data=f'bye')).as_markup()
             await message.answer(f'{duelMemberDisplayName}, {duelInitiatorDisplayName} вызывает Вас на дуэль! Проигравший отправится отдыхать на срок 1 до 12 часов!', reply_markup=kb)
+            await asyncio.sleep(120)
+            l.remove(fromUser)
             return
         except:
             pass

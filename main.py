@@ -6,6 +6,7 @@ pip.main(['install', 'aiogram'])
 from background import keep_alive #function for up in replit
 
 from cachetools import TTLCache
+import requests
 import csv
 import datetime
 import os
@@ -1065,6 +1066,37 @@ async def myaf(message: types.Message):
     myafs = [FSInputFile('myaf1.mp4'), FSInputFile('myaf2.mp4'), FSInputFile('myaf3.mp4'), FSInputFile('myaf4.mp4'), FSInputFile('myaf5.mp4'), FSInputFile('myaf6.mp4'), FSInputFile('myaf7.mp4'), FSInputFile('myaf8.mp4')]
     gif = random.choice(myafs)
     await bot.send_document(message.chat.id, gif)
+
+@router.message(F.text.lower().startswith('мяф '))
+async def myafTenor(message: types.Message):
+    try:
+        matched = re.search(r'^мяф\s+(.*)', message.text, re.I)
+        if matched:
+            gif_url = await fetch_gif(matched.group(1))
+            if gif_url:
+                await bot.send_animation(
+                    chat_id=chatId,
+                    animation=gif_url
+                )
+    except Exception as e:
+        print(f"Exception during myaf tenor {str(e)}")
+
+
+async def fetch_gif(search_term):
+    if search_term is None:
+        search_term = 'котик'
+    limit = 1
+    clientKey = 'tgbot'
+    tenorKey = 'AIzaSyCvFm1iwvb8jVoPd3Q9pRqx8uw_v-cGVJ0'
+    response = requests.get(
+        f'https://tenor.googleapis.com/v2/search?q={search_term}&key={tenorKey}&client_key={clientKey}&limit={limit}'
+    )
+    
+    if response.status_code == 200:
+        gifs = response.json()
+        gif_url = gifs['results'][0]['media_formats']['gif']['url']
+        return gif_url
+    return None
 
 
 # @router.message()

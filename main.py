@@ -55,6 +55,8 @@ dp.include_router(router)
 #base2.commit()
 # old db
 
+enableNotNoiseCommands = True
+
 baseInit = psycopg2.connect(
     dbname=database,
     user=db_username,
@@ -189,6 +191,8 @@ async def send_welcome(chat_member: types.ChatMemberUpdated):
 
 @router.message(Command('blackjack'))
 async def blackjack(message: types.Message):
+    if enableNotNoiseCommands:
+        return
     if '@' in message.text:
         name = message.text[message.text.index('@'):]
         if name == '@VladislavZili':
@@ -490,6 +494,8 @@ async def suggest(message: types.Message):
 
 @router.message(Command('roulette'))
 async def roulette(message: types.Message):
+    if enableNotNoiseCommands:
+        return
     global active
     if active:
         return
@@ -607,6 +613,8 @@ async def n(callback: types.CallbackQuery):
 
 @router.message(Command('mystats'))
 async def stats(message: types.Message):
+    if enableNotNoiseCommands:
+        return
     userId = message.from_user.id
     base = None
     cursor = None
@@ -656,6 +664,8 @@ async def stats(message: types.Message):
 
 @router.message(Command('myfullstats'))
 async def myfullstats(message: types.Message):
+    if enableNotNoiseCommands:
+        return
     userId = message.from_user.id
     base = None
     cursor = None
@@ -710,6 +720,8 @@ async def myfullstats(message: types.Message):
 
 @router.message(Command('stats'))
 async def stats(message: types.Message):
+    if enableNotNoiseCommands:
+        return
     stats = []
     base = None
     cursor = None
@@ -742,6 +754,8 @@ async def stats(message: types.Message):
 
 @router.message(Command('duel'))
 async def duel(message: types.Message):
+    if enableNotNoiseCommands:
+        return
     createUserIfNotExist(message.from_user)
     kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Стреляться!', callback_data=f's|{message.from_user.id}')).as_markup()
     await message.answer(f'@{message.from_user.username} вызывает на дуэль!\n\nПравила дуэли: проигравший дарит победителю гифт. Не участвуйте в дуэлях, если не сможете подарить гифт, иначе будете чушпанами!', reply_markup=kb)
@@ -874,6 +888,8 @@ async def shootduel(callback: types.CallbackQuery):
 
 @router.message(Command('duelshoot'))
 async def duelshoot(message: types.Message):
+    if enableNotNoiseCommands:
+        return
     # checking for cooldown
     user = message.from_user.id
     createUserIfNotExist(message.from_user)
@@ -976,6 +992,8 @@ async def shoot(message: types.Message):
 
 @router.message(F.text.lower().startswith(('кто ', 'кого ', 'кому ', 'кем ', 'о ком ')), F.text.lower().endswith('?'))
 async def kto(message: types.Message):
+    if enableNotNoiseCommands:
+        return
     if message.chat.id > 0 and message.chat.id != 5163549672:
         await bot.send_message(chatId, message.text)
         userId = random.choice(list(users.keys()))
@@ -1051,24 +1069,32 @@ def gay_dnya():
 
 @router.message(F.text.lower().contains('гей дня'))
 async def gdn(message: types.Message):
+    if enableNotNoiseCommands:
+        return
     first_name, userId = gay_dnya()
     await message.answer(f'[{escape_md(first_name)}](tg://user?id={userId}) гей дня', parse_mode='MarkdownV2', disable_web_page_preview=True)
 
 
 @router.message(F.text.lower().contains('пирожок дня'))
 async def pdn(message: types.Message):
+    if enableNotNoiseCommands:
+        return
     first_name, userId = pirozhok_dnya()
     await message.answer(f'[{escape_md(first_name)}](tg://user?id={userId}) пирожок дня', parse_mode='MarkdownV2', disable_web_page_preview=True)
 
 
 @router.message(F.text.lower() == 'мяф')
 async def myaf(message: types.Message):
+    if enableNotNoiseCommands:
+        return
     myafs = [FSInputFile('myaf1.mp4'), FSInputFile('myaf2.mp4'), FSInputFile('myaf3.mp4'), FSInputFile('myaf4.mp4'), FSInputFile('myaf5.mp4'), FSInputFile('myaf6.mp4'), FSInputFile('myaf7.mp4'), FSInputFile('myaf8.mp4')]
     gif = random.choice(myafs)
     await bot.send_document(message.chat.id, gif)
 
 @router.message(F.text.lower().startswith('мяф '))
 async def myafTenor(message: types.Message):
+    if enableNotNoiseCommands:
+        return
     try:
         matched = re.search(r'^мяф\s+(.*)', message.text, re.I)
         if matched:

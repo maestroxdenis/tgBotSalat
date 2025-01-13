@@ -116,7 +116,7 @@ def escape_md(text):
 async def refreshUsersData():
     data_refresh_interval = 3  # seconds
     for userId in users:
-        try: 
+        try:
             user = (await bot.get_chat_member(chatId, userId)).user
             selectedUser = users[userId]
             requireRefresh = False
@@ -129,7 +129,7 @@ async def refreshUsersData():
             if selectedUser["lastname"] != user.last_name:
                 selectedUser["lastname"] = user.last_name
                 requireRefresh = True
-        
+
             if requireRefresh:
                 base = None
                 cursor = None
@@ -148,9 +148,9 @@ async def refreshUsersData():
                         base.close()
         except Exception as e:
              print(f"Exception during refresh users {str(e)}")
-        
+
         time.sleep(data_refresh_interval)
-    
+
 shootCache = TTLCache(maxsize=100, ttl=120)
 active = False
 
@@ -372,7 +372,7 @@ async def who(message: types.Message):
                 mentionedUser = (await bot.get_chat_member(message.chat.id, int(foundUserId))).user
         except Exception as e:
             print(f"Exception during getting who info username without mention {str(e)}")
-    else: 
+    else:
         for entity in message.entities:
             if entity.type == 'text_mention':
                 mentionedUser = entity.user
@@ -392,10 +392,10 @@ async def who(message: types.Message):
                         mentionedUser = (await bot.get_chat_member(message.chat.id, int(foundUserId))).user
                 except Exception as e:
                     print(f"Exception during getting who info username {str(e)}")
-        
+
             if mentionedUser:
                 break
-    
+
     if mentionedUser is not None:
         base = None
         cursor = None
@@ -434,7 +434,7 @@ async def who(message: types.Message):
 async def rasstrel(message: types.Message):
     user = await bot.get_chat_member(message.chat.id, message.from_user.id)
     status = user.status
-    if message.from_user.id == 7187106984 or status == 'administrator' or status == 'owner' or status == 'creator':
+    if status == 'administrator' or status == 'owner' or status == 'creator':
         try:
             userid = int(re.search('\d+', message.text).group())
             await bot.restrict_chat_member(message.chat.id, userid, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=1))
@@ -448,7 +448,7 @@ async def rasstrel(message: types.Message):
             for i in users:
                 user = await bot.get_chat_member(message.chat.id, int(i))
                 status = user.status
-                if status != 'creator' and status != 'owner' and status != 'administrator' and user.user.id != 7187106984:
+                if status != 'creator' and status != 'owner' and status != 'administrator':
                     await bot.restrict_chat_member(message.chat.id, int(i), permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
 
 
@@ -456,7 +456,7 @@ async def rasstrel(message: types.Message):
 async def unmute(message: types.Message):
     user = await bot.get_chat_member(message.chat.id, message.from_user.id)
     status = user.status
-    if message.from_user.id == 7187106984 or status == 'administrator' or status == 'owner' or status == 'creator':
+    if status == 'administrator' or status == 'owner' or status == 'creator':
         try:
             userid = int(re.search('\d+', message.text).group())
             await bot.restrict_chat_member(message.chat.id, userid, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
@@ -729,7 +729,7 @@ async def stats(message: types.Message):
         base = psycopg2.connect(dbname=database,user=db_username,password=password,host=server,port=port)
         cursor = base.cursor()
         cursor.execute('''
-                            SELECT 
+                            SELECT
                                userId,
                                SUM(CASE WHEN state = 1 THEN 1 ELSE 0 END) AS win,
                                SUM(CASE WHEN state = 0 THEN 1 ELSE 0 END) AS loose,
@@ -769,7 +769,7 @@ async def d(callback: types.CallbackQuery):
         await bot.edit_message_text(text=f'{users[duelist]["displayName"]} передумал стреляться и сбежал!', chat_id=callback.message.chat.id, message_id=callback.message.message_id)
         return
     createUserIfNotExist(fromUser)
-    r = random.randint(1, 3)    
+    r = random.randint(1, 3)
     base = None
     cursor = None
     try:
@@ -945,7 +945,7 @@ async def shoot(message: types.Message):
 
     # !!! later add check for field evershoot (and update for shoot initiator to 1)
     users_id = list(users.keys())
-    
+
     # duration of mute in minutes
     mute_hours_seq = [1] * 173 + [2] * 115 + [3] * 77 + [4] * 51 + [5] * 34 + [6] * 23 + [7] * 15 + [8] * 10 + [9] * 7 + [10] * 5 + [11] * 3 + [12] * 2
     mute_hours = random.choice(mute_hours_seq)
@@ -1041,7 +1041,7 @@ def gay_dnya():
     first_name = None
     userId = None
     date = None
-    try: 
+    try:
         file = open('gay.txt', 'r', encoding="utf-8")
         file.seek(0)
         date = file.readline()[:-1]
@@ -1117,7 +1117,7 @@ async def fetch_gif(search_term):
     response = requests.get(
         f'https://tenor.googleapis.com/v2/search?q={search_term}&key={tenorKey}&client_key={clientKey}&limit={limit}'
     )
-    
+
     if response.status_code == 200:
         gifs = response.json()
         gif_url = gifs['results'][0]['media_formats']['gif']['url']
@@ -1182,7 +1182,6 @@ async def myfullfullstats(message: types.Message):
 
 
 async def main():
-    # await bot.restrict_chat_member(chatId, 7187106984, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
     await bot.delete_webhook(drop_pending_updates=True)
     await asyncio.gather(dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types()), refreshUsersData())
 

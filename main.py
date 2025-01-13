@@ -754,8 +754,6 @@ async def stats(message: types.Message):
 
 @router.message(Command('duel'))
 async def duel(message: types.Message):
-    if enableNotNoiseCommands:
-        return
     createUserIfNotExist(message.from_user)
     kb = InlineKeyboardBuilder().add(InlineKeyboardButton(text='Стреляться!', callback_data=f's|{message.from_user.id}')).as_markup()
     await message.answer(f'@{message.from_user.username} вызывает на дуэль!\n\nПравила дуэли: проигравший дарит победителю гифт. Не участвуйте в дуэлях, если не сможете подарить гифт, иначе будете чушпанами!', reply_markup=kb)

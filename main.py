@@ -888,8 +888,6 @@ async def shootduel(callback: types.CallbackQuery):
 
 @router.message(Command('duelshoot'))
 async def duelshoot(message: types.Message):
-    if enableNotNoiseCommands:
-        return
     # checking for cooldown
     user = message.from_user.id
     createUserIfNotExist(message.from_user)

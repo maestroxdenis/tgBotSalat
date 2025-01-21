@@ -189,6 +189,12 @@ async def send_welcome(chat_member: types.ChatMemberUpdated):
             createUserIfNotExist(joinedUser)
             await chat_member.answer(f"Привет новенький [{escape_md(joinedUser.first_name)}](tg://user?id={joinedUser.id})\! С тебя гифт\!", parse_mode='MarkdownV2')
 
+    if chat_member.new_chat_member.status == 'left':
+        chatMember = chat_member.new_chat_member
+        leftUser = chatMember.user
+        if leftUser.id != bot.id and leftUser.is_bot == False and users.get(leftUser.id) is not None:
+            await chat_member.answer(f"[{escape_md(leftUser.first_name)}](tg://user?id={leftUser.id}) покинул чат\. Пока лох\!", parse_mode='MarkdownV2')
+
 @router.message(Command('blackjack'))
 async def blackjack(message: types.Message):
     if enableNotNoiseCommands:

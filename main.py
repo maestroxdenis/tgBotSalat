@@ -151,7 +151,7 @@ async def refreshUsersData():
 
         time.sleep(data_refresh_interval)
 
-shootCache = TTLCache(maxsize=100, ttl=120)
+shootCache = TTLCache(maxsize=100, ttl=15)
 active = False
 
 def createUserIfNotExist(fromUser: User):

@@ -1184,8 +1184,15 @@ async def myfullfullstats(message: types.Message):
 
 
 async def main():
-    await bot.delete_webhook(drop_pending_updates=True)
-    await asyncio.gather(dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types()), refreshUsersData())
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+        await asyncio.gather(dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types()), refreshUsersData())
+    except:
+        print("Fatal error, restarting main")
+        await main()
+    finally:
+        print("Stopped execution, restarting main")
+        await main()
 
 
 for i in glob.glob('[0-9]*.txt'):

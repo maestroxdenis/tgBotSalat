@@ -3,7 +3,6 @@ pip.main(['install', 'pytz'])
 pip.main(['install', 'psycopg2'])
 pip.main(['install', 'psycopg2-binary'])
 pip.main(['install', 'aiogram'])
-from background import keep_alive #function for up in replit
 
 from cachetools import TTLCache
 import requests
@@ -27,8 +26,6 @@ from aiogram.types import FSInputFile, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import User
 from aiogram.types.chat_member_member import ChatMemberMember
-
-keep_alive() #run backgroud job for flask checker
 
 # Define connection parameters
 server = 'pg-12adbde-tgbotsalat.k.aivencloud.com'

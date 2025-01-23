@@ -427,7 +427,7 @@ async def who(message: types.Message):
 
             if infoText == "":
                 infoText += "Нет информации"
-            await message.reply(f'[{escape_md(firstname)}](tg://user?id={mentionedUser.id})\:\n{infoText}', parse_mode='MarkdownV2')
+            await message.reply(f'[{escape_md(firstname)}]\:\n{infoText}', parse_mode='MarkdownV2')
         except Exception as e:
             print(f"Exception during getting who info {str(e)}")
         finally:

@@ -144,7 +144,7 @@ async def refreshUsersData():
                     if base:
                         base.close()
         except Exception as e:
-             print(f"Exception during refresh users {str(e)}")
+             print(f"Exception during refresh users {str(e)} {str(userId)}")
 
         time.sleep(data_refresh_interval)
 
@@ -467,10 +467,13 @@ async def unmute(message: types.Message):
             await message.answer(f'[{escape_md(users[userid]["firstname"])}](tg://user?id={userid}) был помилован\!' , parse_mode='MarkdownV2')
         except:
             for i in users.keys():
-                user = await bot.get_chat_member(message.chat.id, int(i))
-                user_status = user.status
-                if user_status == 'restricted':
-                    await bot.restrict_chat_member(message.chat.id, user.user.id, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
+                try:
+                    user = await bot.get_chat_member(message.chat.id, int(i))
+                    user_status = user.status
+                    if user_status == 'restricted':
+                        await bot.restrict_chat_member(message.chat.id, user.user.id, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
+                except Exception as e:
+                    print(f"Exception during unmute {str(e)} {str(i)}")
             await message.answer('Все помилованы!')
 
 
@@ -478,11 +481,14 @@ async def unmute(message: types.Message):
 async def mutes(message: types.Message):
     text = ''
     for i in users.keys():
-        user = await bot.get_chat_member(message.chat.id, int(i))
-        user_status = user.status
-        user_id = user.user.id
-        if user_status == 'restricted':
-            text = text + f'[{escape_md(users[user_id]["firstname"])}](tg://user?id={user_id}) [{user_id}]' ' \- ' + (user.until_date + timedelta(hours=3)).strftime("%d/%m/%Y, %H:%M:%S") + '\n'
+        try:
+            user = await bot.get_chat_member(message.chat.id, int(i))
+            user_status = user.status
+            user_id = user.user.id
+            if user_status == 'restricted':
+                text = text + f'[{escape_md(users[user_id]["firstname"])}](tg://user?id={user_id}) [{user_id}]' ' \- ' + (user.until_date + timedelta(hours=3)).strftime("%d/%m/%Y, %H:%M:%S") + '\n'
+        except Exception as e:
+                    print(f"Exception during mutes {str(e)} {str(i)}")
     if text == '': text = 'Все свободны\! УРАААААААААААААААААА\!'
     await message.answer(text, parse_mode='MarkdownV2')
 

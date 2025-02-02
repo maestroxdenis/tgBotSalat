@@ -3,6 +3,8 @@ pip.main(['install', 'pytz'])
 pip.main(['install', 'psycopg2'])
 pip.main(['install', 'psycopg2-binary'])
 pip.main(['install', 'aiogram'])
+pip.main(['install', 'cachetools'])
+pip.main(['install', 'requests'])
 
 from cachetools import TTLCache
 import requests
@@ -437,7 +439,7 @@ async def who(message: types.Message):
 async def rasstrel(message: types.Message):
     user = await bot.get_chat_member(message.chat.id, message.from_user.id)
     status = user.status
-    if (status == 'administrator' or status == 'owner' or status == 'creator') and user.can_restrict_members:
+    if (status == 'owner' or status == 'creator') or (status == 'administrator' and user.can_restrict_members):
         try:
             userid = int(re.search('\d+', message.text).group())
             await bot.restrict_chat_member(message.chat.id, userid, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=1))
@@ -459,21 +461,24 @@ async def rasstrel(message: types.Message):
 async def unmute(message: types.Message):
     user = await bot.get_chat_member(message.chat.id, message.from_user.id)
     status = user.status
-    if (status == 'administrator' or status == 'owner' or status == 'creator') and user.can_restrict_members:
+    if (status == 'owner' or status == 'creator') or (status == 'administrator' and user.can_restrict_members):
         try:
             userid = int(re.search('\d+', message.text).group())
             await bot.restrict_chat_member(message.chat.id, userid, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
             user = await bot.get_chat_member(message.chat.id, userid)
             await message.answer(f'[{escape_md(users[userid]["firstname"])}](tg://user?id={userid}) был помилован\!' , parse_mode='MarkdownV2')
         except:
-            for i in users.keys():
-                try:
-                    user = await bot.get_chat_member(message.chat.id, int(i))
-                    user_status = user.status
-                    if user_status == 'restricted':
-                        await bot.restrict_chat_member(message.chat.id, user.user.id, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
-                except Exception as e:
-                    print(f"Exception during unmute {str(e)} {str(i)}")
+            try:
+                for i in users.keys():
+                    try:
+                        user = await bot.get_chat_member(message.chat.id, int(i))
+                        user_status = user.status
+                        if user_status == 'restricted':
+                            await bot.restrict_chat_member(message.chat.id, user.user.id, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
+                    except Exception as e:
+                        print(f"Exception during unmute {str(e)} {str(i)}")
+            except Exception as e:
+                print(f"Exception during unmute for {str(e)}")
             await message.answer('Все помилованы!')
 
 

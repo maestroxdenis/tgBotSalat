@@ -437,7 +437,7 @@ async def who(message: types.Message):
 async def rasstrel(message: types.Message):
     user = await bot.get_chat_member(message.chat.id, message.from_user.id)
     status = user.status
-    if status == 'administrator' or status == 'owner' or status == 'creator':
+    if (status == 'administrator' or status == 'owner' or status == 'creator') and user.can_restrict_members:
         try:
             userid = int(re.search('\d+', message.text).group())
             await bot.restrict_chat_member(message.chat.id, userid, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=1))
@@ -459,7 +459,7 @@ async def rasstrel(message: types.Message):
 async def unmute(message: types.Message):
     user = await bot.get_chat_member(message.chat.id, message.from_user.id)
     status = user.status
-    if status == 'administrator' or status == 'owner' or status == 'creator':
+    if (status == 'administrator' or status == 'owner' or status == 'creator') and user.can_restrict_members:
         try:
             userid = int(re.search('\d+', message.text).group())
             await bot.restrict_chat_member(message.chat.id, userid, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))

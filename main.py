@@ -437,6 +437,8 @@ async def who(message: types.Message):
 
 @router.message(Command('rasstrel'))
 async def rasstrel(message: types.Message):
+    if enableNotNoiseCommands:
+        return
     user = await bot.get_chat_member(message.chat.id, message.from_user.id)
     status = user.status
     if (status == 'owner' or status == 'creator') or (status == 'administrator' and user.can_restrict_members):
@@ -508,8 +510,6 @@ async def suggest(message: types.Message):
 
 @router.message(Command('roulette'))
 async def roulette(message: types.Message):
-    if enableNotNoiseCommands:
-        return
     global active
     if active:
         return

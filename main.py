@@ -1189,15 +1189,6 @@ async def myfullfullstats(message: types.Message):
     await bot.send_document(message.chat.id, FSInputFile(f'{message.from_user.username}.csv'))
     os.remove(f'{message.from_user.username}.csv')
 
-
-@router.message(F.text.lower().contains('жабки'))
-async def myfullfullstats(message: types.Message):
-    for i in range(10):
-        sticker = await bot.send_sticker(message.chat.id, 'CAACAgIAAxkBAAENwoJnqiuyuc0-DS5QdiReNfAy6_N28AAC_BcAAts9OEmV9p6yNqTsXjYE')
-        await asyncio.sleep(0.5)
-        await bot.delete_message(message.chat.id, sticker.message_id)
-
-
 async def main():
     try:
         await bot.delete_webhook(drop_pending_updates=True)

@@ -456,7 +456,7 @@ async def rasstrel(message: types.Message):
                 user = await bot.get_chat_member(message.chat.id, int(i))
                 status = user.status
                 if status != 'creator' and status != 'owner' and status != 'administrator':
-                    await bot.restrict_chat_member(message.chat.id, int(i), permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
+                    await bot.restrict_chat_member(message.chat.id, int(i), permissions=json.loads("""{"can_send_messages":"TRUE", "can_send_audios":"TRUE", "can_send_documents":"TRUE", "can_send_photos":"TRUE", "can_send_videos":"TRUE", "can_send_video_notes":"TRUE", "can_send_voice_notes":"TRUE", "can_send_polls":"TRUE", "can_send_other_messages":"TRUE"}"""), until_date=timedelta(seconds=65))
 
 
 @router.message(Command('unmute'))
@@ -466,7 +466,7 @@ async def unmute(message: types.Message):
     if (status == 'owner' or status == 'creator') or (status == 'administrator' and user.can_restrict_members):
         try:
             userid = int(re.search('\d+', message.text).group())
-            await bot.restrict_chat_member(message.chat.id, userid, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
+            await bot.restrict_chat_member(message.chat.id, userid, permissions=json.loads("""{"can_send_messages":"TRUE", "can_send_audios":"TRUE", "can_send_documents":"TRUE", "can_send_photos":"TRUE", "can_send_videos":"TRUE", "can_send_video_notes":"TRUE", "can_send_voice_notes":"TRUE", "can_send_polls":"TRUE", "can_send_other_messages":"TRUE"}"""), until_date=timedelta(seconds=65))
             user = await bot.get_chat_member(message.chat.id, userid)
             await message.answer(f'[{escape_md(users[userid]["firstname"])}](tg://user?id={userid}) был помилован\!' , parse_mode='MarkdownV2')
         except:
@@ -476,7 +476,7 @@ async def unmute(message: types.Message):
                         user = await bot.get_chat_member(message.chat.id, int(i))
                         user_status = user.status
                         if user_status == 'restricted':
-                            await bot.restrict_chat_member(message.chat.id, user.user.id, permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=timedelta(seconds=65))
+                            await bot.restrict_chat_member(message.chat.id, user.user.id, permissions=json.loads("""{"can_send_messages":"TRUE"}"""), until_date=timedelta(seconds=65))
                     except Exception as e:
                         print(f"Exception during unmute {str(e)} {str(i)}")
             except Exception as e:
@@ -1189,6 +1189,13 @@ async def myfullfullstats(message: types.Message):
     await bot.send_document(message.chat.id, FSInputFile(f'{message.from_user.username}.csv'))
     os.remove(f'{message.from_user.username}.csv')
 
+
+@router.message(F.text.lower('жабки'))
+async def myfullfullstats(message: types.Message):
+    for i in range(10):
+        sticker = await bot.send_sticker(message.chat.id, 'CAACAgIAAxkBAAENwoJnqiuyuc0-DS5QdiReNfAy6_N28AAC_BcAAts9OEmV9p6yNqTsXjYE')
+        await asyncio.sleep(0.5)
+        await bot.delete_message(message.chat.id, sticker.message_id)
 
 
 async def main():

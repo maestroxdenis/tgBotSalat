@@ -1190,7 +1190,7 @@ async def myfullfullstats(message: types.Message):
     os.remove(f'{message.from_user.username}.csv')
 
 
-@router.message(F.text.lower('жабки'))
+@router.message(F.text.lower().contains('жабки'))
 async def myfullfullstats(message: types.Message):
     for i in range(10):
         sticker = await bot.send_sticker(message.chat.id, 'CAACAgIAAxkBAAENwoJnqiuyuc0-DS5QdiReNfAy6_N28AAC_BcAAts9OEmV9p6yNqTsXjYE')

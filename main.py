@@ -903,8 +903,8 @@ async def duelshoot(message: types.Message):
     # checking for cooldown
     user = message.from_user.id
     createUserIfNotExist(message.from_user)
-    if user in shootCache:
-        return
+    # if user in shootCache:
+    #     return
     shootCache[user] = user
 
 
@@ -999,6 +999,17 @@ async def shoot(message: types.Message):
             gif = FSInputFile('buckshot-roulette.mp4')
             await bot.send_document(message.chat.id, gif)
             await bot.restrict_chat_member(message.chat.id, int(unlucky_user_id), permissions=json.loads("""{"can_send_messages":"FALSE"}"""), until_date=bantime)
+
+
+@router.message(F.text.lower() == 'жабки')
+async def frogs(message: types.Message):
+    stickers = []
+    for i in range(5):
+        sticker = await bot.send_sticker(message.chat.id, 'CAACAgIAAxkBAAEOQH5n89g5JV10sQdWgGu9lcD5Rqnh8gAC_BcAAts9OEmV9p6yNqTsXjYE')
+        stickers.append(sticker)
+    for i in range(5):
+        await bot.delete_message(message.chat.id, stickers[i].message_id)
+
 
 @router.message(F.text.lower().startswith(('кто ', 'кого ', 'кому ', 'кем ', 'о ком ')), F.text.lower().endswith('?'))
 async def kto(message: types.Message):

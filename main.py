@@ -29,29 +29,22 @@ from aiogram.types import User
 from aiogram.types.chat_member_member import ChatMemberMember
 
 # Define connection parameters
-server = 'pg-12adbde-tgbotsalat.k.aivencloud.com'
-db_username = 'avnadmin'
-password = 'AVNS_eTIAZrJOAvsTtGsovPh'
-port = 21277
+server = str(${{DATABASE_SERVER}})
+db_username = str(${{DATABASE_USER}})
+password = str(${{DATABASE_PASSWORD}})
+port = int(${{DATABASE_PORT}})
 
 #database = 'betatest' #beta test db
 #bot = Bot(token='8174792705:AAHoySirgnNaENcPZTb1WCsewJOPGRZCzDs') # beta test bot
 #chatId = -1002465405879 #beta test chat id
 
-database = 'defaultdb'
-bot = Bot(token='7540561391:AAEIMU8brVCB6RvW8Xl5UxshCVUi0Nbty58')
-chatId = -1002326046662
+database = str(${{DATABASE}})
+bot = Bot(token=str(${{TG_TOKEN}}))
+chatId = int(${{CHAT_ID}})
 
 dp = Dispatcher()
 router = Router()
 dp.include_router(router)
-
-# old db
-#base2 = sq.connect('stats.db')
-#cur = base2.cursor()
-#base2.execute('CREATE TABLE IF NOT EXISTS users(username TEXT PRIMARY KEY, win INTEGER, loose INTEGER, draw INTEGER, logs TEXT)')
-#base2.commit()
-# old db
 
 enableNotNoiseCommands = True
 

@@ -1,6 +1,5 @@
 import pip
 pip.main(['install', 'pytz'])
-pip.main(['install', 'psycopg2'])
 pip.main(['install', 'psycopg2-binary'])
 pip.main(['install', 'aiogram'])
 pip.main(['install', 'cachetools'])

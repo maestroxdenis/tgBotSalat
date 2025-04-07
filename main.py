@@ -29,18 +29,18 @@ from aiogram.types import User
 from aiogram.types.chat_member_member import ChatMemberMember
 
 # Define connection parameters
-server = str(os.getenv('DATABASE_SERVER')
-db_username = str(os.getenv('DATABASE_USER')
-password = str(os.getenv('DATABASE_PASSWORD')
+server = str(os.getenv('DATABASE_SERVER'))
+db_username = str(os.getenv('DATABASE_USER'))
+password = str(os.getenv('DATABASE_PASSWORD'))
 port = int(os.getenv('DATABASE_PORT')
 
 #database = 'betatest' #beta test db
 #bot = Bot(token='8174792705:AAHoySirgnNaENcPZTb1WCsewJOPGRZCzDs') # beta test bot
 #chatId = -1002465405879 #beta test chat id
 
-database = str(os.getenv('DATABASE')
-bot = Bot(token=str(os.getenv('TG_TOKEN'))
-chatId = int(os.getenv('CHAT_ID')
+database = str(os.getenv('DATABASE'))
+bot = Bot(token=str(os.getenv('TG_TOKEN')))
+chatId = int(os.getenv('CHAT_ID'))
 
 dp = Dispatcher()
 router = Router()

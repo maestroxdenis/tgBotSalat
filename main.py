@@ -896,8 +896,8 @@ async def duelshoot(message: types.Message):
     # checking for cooldown
     user = message.from_user.id
     createUserIfNotExist(message.from_user)
-    # if user in shootCache:
-    #     return
+    if user in shootCache:
+         return
     shootCache[user] = user
 
 

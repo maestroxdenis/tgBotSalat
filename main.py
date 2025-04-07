@@ -31,7 +31,7 @@ from aiogram.types.chat_member_member import ChatMemberMember
 
 # Define connection parameters
 print("here is database server:")
-print(${{shared.DATABASE_SERVER}})
+print(os.getenv("shared.DATABASE_SERVER"))
 server = str(os.getenv("DATABASE_SERVER"))
 db_username = str(os.getenv("DATABASE_USER"))
 password = str(os.getenv("DATABASE_PASSWORD"))

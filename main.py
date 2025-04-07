@@ -32,7 +32,7 @@ from aiogram.types.chat_member_member import ChatMemberMember
 server = str(os.getenv('DATABASE_SERVER'))
 db_username = str(os.getenv('DATABASE_USER'))
 password = str(os.getenv('DATABASE_PASSWORD'))
-port = int(os.getenv('DATABASE_PORT')
+port = int(os.getenv('DATABASE_PORT'))
 
 #database = 'betatest' #beta test db
 #bot = Bot(token='8174792705:AAHoySirgnNaENcPZTb1WCsewJOPGRZCzDs') # beta test bot

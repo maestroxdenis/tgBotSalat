@@ -356,43 +356,49 @@ async def blackjack(message: types.Message):
 async def who(message: types.Message):
     mentionedUser = None
 
-    if len(message.entities) == 1:
-        try:
-            matched = re.match(r'^/who\S*\s(\S+)\s*$', message.text)
-            if matched is not None:
-                foundUserId = None
-                username = str(matched.group(1)).lower()
-                for key, value in users.items():
-                    currentUserName = str(value["username"]).lower()
-                    if currentUserName == username:
-                        foundUserId = key
-                        break
-                mentionedUser = (await bot.get_chat_member(message.chat.id, int(foundUserId))).user
-        except Exception as e:
-            print(f"Exception during getting who info username without mention {str(e)}")
-    else:
-        for entity in message.entities:
-            if entity.type == 'text_mention':
-                mentionedUser = entity.user
-                createUserIfNotExist(mentionedUser)
+    if(re.match(r'^/who$', message.text) or re.match(r'^/who@russianruletkickbot$', message.text)):
+        reply_user = message.reply_to_message.from_user
+        if reply_user is not None:
+            mentionedUser = (await bot.get_chat_member(message.chat.id, reply_user.id)).user
 
-            if entity.type == 'mention':
-                try:
-                    username = re.search(' @\w*', message.text)
-                    if username is not None:
-                        foundUserId = None
-                        username = str(username.group()[2:]).lower()
-                        for key, value in users.items():
-                            currentUserName = str(value["username"]).lower()
-                            if currentUserName == username:
-                                foundUserId = key
-                                break
-                        mentionedUser = (await bot.get_chat_member(message.chat.id, int(foundUserId))).user
-                except Exception as e:
-                    print(f"Exception during getting who info username {str(e)}")
+    if mentionedUser is None:
+        if len(message.entities) == 1:
+            try:
+                matched = re.match(r'^/who\S*\s(\S+)\s*$', message.text)
+                if matched is not None:
+                    foundUserId = None
+                    username = str(matched.group(1)).lower()
+                    for key, value in users.items():
+                        currentUserName = str(value["username"]).lower()
+                        if currentUserName == username:
+                            foundUserId = key
+                            break
+                    mentionedUser = (await bot.get_chat_member(message.chat.id, int(foundUserId))).user
+            except Exception as e:
+                print(f"Exception during getting who info username without mention {str(e)}")
+        else:
+            for entity in message.entities:
+                if entity.type == 'text_mention':
+                    mentionedUser = entity.user
+                    createUserIfNotExist(mentionedUser)
+    
+                if entity.type == 'mention':
+                    try:
+                        username = re.search(' @\w*', message.text)
+                        if username is not None:
+                            foundUserId = None
+                            username = str(username.group()[2:]).lower()
+                            for key, value in users.items():
+                                currentUserName = str(value["username"]).lower()
+                                if currentUserName == username:
+                                    foundUserId = key
+                                    break
+                            mentionedUser = (await bot.get_chat_member(message.chat.id, int(foundUserId))).user
+                    except Exception as e:
+                        print(f"Exception during getting who info username {str(e)}")
 
-            if mentionedUser:
-                break
+                if mentionedUser:
+                    break
 
     if mentionedUser is not None:
         base = None

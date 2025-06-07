@@ -392,6 +392,7 @@ async def whoinfo(message: types.Message):
                 base.commit()
             
             cursor.execute('UPDATE userInfos SET description = %s WHERE userId = %s', (str(desc), mentionedUser.id))
+            base.commit()
 
             await message.reply(f'[{escape_md(firstname)}]\:\n{infoText}', parse_mode='MarkdownV2')
         except Exception as e:

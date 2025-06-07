@@ -28,19 +28,18 @@ from aiogram.types import FSInputFile, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import User
 from aiogram.types.chat_member_member import ChatMemberMember
-print("mydatabase")
-print(os.getenv("SERVER_DATABASE"))
+
 # Define connection parameters
-server = str(os.getenv("DATABASE_SERVER"))
-db_username = str(os.getenv("DATABASE_USER"))
-password = str(os.getenv("DATABASE_PASSWORD"))
-port = int(os.getenv("DATABASE_PORT"))
+server = str(os.getenv("PGHOST"))
+db_username = str(os.getenv("PGUSER"))
+password = str(os.getenv("PGPASSWORD"))
+port = int(os.getenv("PGPORT"))
 
 #database = 'betatest' #beta test db
 #bot = Bot(token='8174792705:AAHoySirgnNaENcPZTb1WCsewJOPGRZCzDs') # beta test bot
 #chatId = -1002465405879 #beta test chat id
 
-database = str(os.getenv("DATABASE"))
+database = str(os.getenv("PGDATABASE"))
 bot = Bot(token=str(os.getenv("TG_TOKEN")))
 chatId = int(os.getenv("CHAT_ID"))
 

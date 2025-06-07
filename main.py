@@ -356,17 +356,25 @@ async def blackjack(message: types.Message):
 async def whoinfo(message: types.Message):
     mentionedUser = None
     allowEdit = False
-    if(re.match(r'^/whoinfo$', message.text) or re.match(r'^/whoinfo@russianruletkickbot$', message.text)):
-        mentionedUser = (await bot.get_chat_member(message.chat.id, int(message.from_user.id))).user
-        allowEdit = True
-    else:
-        user = await bot.get_chat_member(message.chat.id, message.from_user.id)
-        status = user.status
-        if (status == 'owner' or status == 'creator') or (status == 'administrator' and user.can_restrict_members):
-            mentionedUser = await get_mentioned_from_message(message)
-            if mentionedUser is not None:
-                allowEdit = True
-    if mentionedUser is not None and allowEdit:
+    desc = None
+    match = re.match(r'^/whoinfo\s+(.*)$', message.text)
+    if match:
+        reply_user = message.reply_to_message.from_user
+        if reply_user is not None:
+            mentionedUser = (await bot.get_chat_member(message.chat.id, reply_user.id)).user
+            user = await bot.get_chat_member(message.chat.id, message.from_user.id)
+            status = user.status
+            if (status == 'owner' or status == 'creator') or (status == 'administrator' and user.can_restrict_members):
+                mentionedUser = await get_mentioned_from_message(message)
+                if mentionedUser is not None:
+                    desc = match.group(1)
+                    allowEdit = True
+        else:
+            desc = match.group(1)
+            mentionedUser = (await bot.get_chat_member(message.chat.id, int(message.from_user.id))).user
+            allowEdit = True
+
+    if mentionedUser is not None and allowEdit and desc is not None:
         base = None
         cursor = None
         try:
@@ -385,7 +393,7 @@ async def whoinfo(message: types.Message):
                 cursor.execute('INSERT INTO userInfos (userId, description, dtf, steam) VALUES(%s, %s,%s,%s)', (mentionedUser.id, None, None, None))
                 base.commit()
             
-            cursor.execute('UPDATE userInfos SET description = %s WHERE userId = %s', (mentionedUser.id, None, None, None))
+            cursor.execute('UPDATE userInfos SET description = %s WHERE userId = %s', (mentionedUser.id, str(desc)))
 
             await message.reply(f'[{escape_md(firstname)}]\:\n{infoText}', parse_mode='MarkdownV2')
         except Exception as e:

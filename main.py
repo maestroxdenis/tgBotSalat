@@ -359,13 +359,12 @@ async def whoinfo(message: types.Message):
     desc = None
     match = re.match(r'^/whoinfo\s+(.*)$', message.text, re.DOTALL)
     if match:
-        reply_user = message.reply_to_message.from_user
-        if reply_user is not None:
+        if message.reply_to_message is not None:
             user = await bot.get_chat_member(message.chat.id, message.from_user.id)
             status = user.status
             if (status == 'owner' or status == 'creator') or (status == 'administrator' and user.can_restrict_members):
                 desc = match.group(1)
-                mentionedUser = (await bot.get_chat_member(message.chat.id, reply_user.id)).user
+                mentionedUser = (await bot.get_chat_member(message.chat.id, message.reply_to_message.from_user.id)).user
                 allowEdit = True
         else:
             desc = match.group(1)

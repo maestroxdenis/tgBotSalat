@@ -361,6 +361,7 @@ async def whoinfo(message: types.Message):
     if match:
         reply_user = message.reply_to_message.from_user
         if reply_user is not None:
+            print("Matched user in reply for whoinfo")
             mentionedUser = (await bot.get_chat_member(message.chat.id, reply_user.id)).user
             user = await bot.get_chat_member(message.chat.id, message.from_user.id)
             status = user.status
@@ -370,10 +371,11 @@ async def whoinfo(message: types.Message):
                     desc = match.group(1)
                     allowEdit = True
         else:
+            print("Matching message sender for whoinfo")
             desc = match.group(1)
             mentionedUser = (await bot.get_chat_member(message.chat.id, int(message.from_user.id))).user
             allowEdit = True
-
+    print("Checking if update whoinfo")
     if mentionedUser is not None and allowEdit and desc is not None:
         base = None
         cursor = None

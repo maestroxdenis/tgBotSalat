@@ -357,7 +357,7 @@ async def whoinfo(message: types.Message):
     mentionedUser = None
     allowEdit = False
     desc = None
-    match = re.match(r'^/whoinfo\s+(.*)$', message.text)
+    match = re.match(r'^/whoinfo\s+(.*)$', message.text, re.DOTALL)
     if match:
         reply_user = message.reply_to_message.from_user
         if reply_user is not None:

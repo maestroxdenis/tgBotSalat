@@ -352,6 +352,91 @@ async def blackjack(message: types.Message):
 #     file.write(f'{str(callback.from_user.id)}')
 #     file.close()
 
+@router.message(Command('whoinfo'))
+async def whoinfo(message: types.Message):
+    mentionedUser = None
+    allowEdit = False
+    if(re.match(r'^/whoinfo$', message.text) or re.match(r'^/whoinfo@russianruletkickbot$', message.text)):
+        mentionedUser = (await bot.get_chat_member(message.chat.id, int(message.from_user.id))).user
+        allowEdit = True
+    else:
+        user = await bot.get_chat_member(message.chat.id, message.from_user.id)
+        status = user.status
+        if (status == 'owner' or status == 'creator') or (status == 'administrator' and user.can_restrict_members):
+            mentionedUser = await get_mentioned_from_message(message)
+            if mentionedUser is not None:
+                allowEdit = True
+    if mentionedUser is not None and allowEdit:
+        base = None
+        cursor = None
+        try:
+            base = psycopg2.connect(dbname=database,user=db_username,password=password,host=server,port=port)
+            cursor = base.cursor()
+            cursor.execute('SELECT userId, description, dtf, steam FROM userInfos WHERE userId = %s', (mentionedUser.id,))
+            rows = cursor.fetchall()
+            infoText = "Изменено с:"
+            firstname = users[mentionedUser.id]["firstname"]
+            if len(rows) != 0:
+                userRow = rows[0]
+                userInfo = UserInfo(int(userRow[0]), userRow[1], userRow[2], userRow[3])
+                if userInfo.description is not None:
+                    infoText += f'{escape_md(userInfo.description)}\n'
+            else:
+                cursor.execute('INSERT INTO userInfos (userId, description, dtf, steam) VALUES(%s, %s,%s,%s)', (mentionedUser.id, None, None, None))
+                base.commit()
+            
+            cursor.execute('UPDATE userInfos SET description = %s WHERE userId = %s', (mentionedUser.id, None, None, None))
+
+            await message.reply(f'[{escape_md(firstname)}]\:\n{infoText}', parse_mode='MarkdownV2')
+        except Exception as e:
+            print(f"Exception during updating who info {str(e)}")
+        finally:
+            if cursor:
+                cursor.close()
+            if base:
+                base.close()
+
+async def get_mentioned_from_message(message: types.Message):
+    mentionedUser = None
+    if len(message.entities) == 1:
+        try:
+            matched = re.match(r'^/who\S*\s(\S+)\s*$', message.text)
+            if matched is not None:
+                foundUserId = None
+                username = str(matched.group(1)).lower()
+                for key, value in users.items():
+                    currentUserName = str(value["username"]).lower()
+                    if currentUserName == username:
+                        foundUserId = key
+                        break
+                mentionedUser = (await bot.get_chat_member(message.chat.id, int(foundUserId))).user
+        except Exception as e:
+            print(f"Exception during getting who info username without mention {str(e)}")
+    else:
+        for entity in message.entities:
+            if entity.type == 'text_mention':
+                mentionedUser = entity.user
+                createUserIfNotExist(mentionedUser)
+
+            if entity.type == 'mention':
+                try:
+                    username = re.search(' @\w*', message.text)
+                    if username is not None:
+                        foundUserId = None
+                        username = str(username.group()[2:]).lower()
+                        for key, value in users.items():
+                            currentUserName = str(value["username"]).lower()
+                            if currentUserName == username:
+                                foundUserId = key
+                                break
+                        mentionedUser = (await bot.get_chat_member(message.chat.id, int(foundUserId))).user
+                except Exception as e:
+                    print(f"Exception during getting who info username {str(e)}")
+            if mentionedUser:
+                break
+
+    return mentionedUser
+
 @router.message(Command('who'))
 async def who(message: types.Message):
     mentionedUser = None
@@ -362,43 +447,7 @@ async def who(message: types.Message):
             mentionedUser = (await bot.get_chat_member(message.chat.id, reply_user.id)).user
 
     if mentionedUser is None:
-        if len(message.entities) == 1:
-            try:
-                matched = re.match(r'^/who\S*\s(\S+)\s*$', message.text)
-                if matched is not None:
-                    foundUserId = None
-                    username = str(matched.group(1)).lower()
-                    for key, value in users.items():
-                        currentUserName = str(value["username"]).lower()
-                        if currentUserName == username:
-                            foundUserId = key
-                            break
-                    mentionedUser = (await bot.get_chat_member(message.chat.id, int(foundUserId))).user
-            except Exception as e:
-                print(f"Exception during getting who info username without mention {str(e)}")
-        else:
-            for entity in message.entities:
-                if entity.type == 'text_mention':
-                    mentionedUser = entity.user
-                    createUserIfNotExist(mentionedUser)
-    
-                if entity.type == 'mention':
-                    try:
-                        username = re.search(' @\w*', message.text)
-                        if username is not None:
-                            foundUserId = None
-                            username = str(username.group()[2:]).lower()
-                            for key, value in users.items():
-                                currentUserName = str(value["username"]).lower()
-                                if currentUserName == username:
-                                    foundUserId = key
-                                    break
-                            mentionedUser = (await bot.get_chat_member(message.chat.id, int(foundUserId))).user
-                    except Exception as e:
-                        print(f"Exception during getting who info username {str(e)}")
-
-                if mentionedUser:
-                    break
+        mentionedUser = await get_mentioned_from_message(message)
 
     if mentionedUser is not None:
         base = None

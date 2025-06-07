@@ -28,7 +28,8 @@ from aiogram.types import FSInputFile, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import User
 from aiogram.types.chat_member_member import ChatMemberMember
-
+print("mydatabase")
+print(os.getenv("SERVER_DATABASE")
 # Define connection parameters
 server = str(os.getenv("DATABASE_SERVER"))
 db_username = str(os.getenv("DATABASE_USER"))

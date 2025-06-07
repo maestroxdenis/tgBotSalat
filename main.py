@@ -509,11 +509,14 @@ async def suggest(message: types.Message):
 
 @router.message(Command('roulette'))
 async def roulette(message: types.Message):
+    print("try roulette")
     global active
     if active:
+        print("roulette is already active")
         return
     else:
         active = True
+    print("starting roulette")
     #reset file if already exists
     file = open('roulette.txt', 'w')
     file.write('')
